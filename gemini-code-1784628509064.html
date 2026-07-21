@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Our App</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding-bottom: 60px; background: #f9f9f9; }
+    .tab-content { display: none; padding: 20px; }
+    .tab-content.active { display: block; }
+    nav { position: fixed; bottom: 0; width: 100%; display: flex; background: white; border-top: 1px solid #ddd; }
+    nav button { flex: 1; padding: 12px; border: none; background: none; font-size: 12px; color: #666; }
+    nav button.active { color: #ff4b72; font-weight: bold; }
+    .hero-card { background: #fff; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .day-counter { font-size: 36px; font-weight: bold; color: #ff4b72; margin: 10px 0; }
+    .calendar-btn { background: #fff0f3; color: #ff4b72; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- TAB 1: HOMEPAGE -->
+  <div id="tab-home" class="tab-content active">
+    <div class="hero-card">
+      <img id="pinned-photo" src="https://via.placeholder.com/300x200" style="width:100%; border-radius: 12px; object-fit: cover;">
+      <h2>We have been together</h2>
+      <div class="day-counter" id="days-count">0 Days</div>
+      <button class="calendar-btn" onclick="openCalendarModal()">📅 Open Calendar</button>
+    </div>
+  </div>
+
+  <!-- TAB 2: PHOTOS -->
+  <div id="tab-photos" class="tab-content">
+    <h3>Shared Memories</h3>
+    <input type="file" id="photo-upload" accept="image/*" onchange="handlePhotoUpload(event)" />
+    <div id="photo-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px;"></div>
+  </div>
+
+  <!-- TAB 3: CHAT -->
+  <div id="tab-chat" class="tab-content">
+    <h3>Chat</h3>
+    <div id="chat-messages" style="height: 300px; overflow-y: scroll; border: 1px solid #eee; padding: 10px;"></div>
+    <input type="text" id="chat-input" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <!-- TAB 4: NOTIFICATIONS -->
+  <div id="tab-notifications" class="tab-content">
+    <h3>Notifications</h3>
+    <ul id="notif-list"></ul>
+  </div>
+
+  <!-- TAB 5: SETTINGS -->
+  <div id="tab-settings" class="tab-content">
+    <h3>Account & Settings</h3>
+    <label>Relationship Start Date:</label>
+    <input type="date" id="start-date-picker" onchange="updateStartDate(this.value)">
+    <br><br>
+    <button onclick="linkGoogleDrive()">Link Google Shared Drive</button>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <nav>
+    <button class="active" onclick="switchTab('home', this)">Home</button>
+    <button onclick="switchTab('photos', this)">Photos</button>
+    <button onclick="switchTab('chat', this)">Chat</button>
+    <button onclick="switchTab('notifications', this)">Alerts</button>
+    <button onclick="switchTab('settings', this)">Settings</button>
+  </nav>
+
+  <!-- EXIF Library for Photo Created Date Extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

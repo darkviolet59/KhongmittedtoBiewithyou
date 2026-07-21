@@ -1,0 +1,59 @@
+// --- TAB NAVIGATION ---
+function switchTab(tabName, btnElement) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+  btnElement.classList.add('active');
+}
+
+// --- DAYS COUNTER LOGIC ---
+const startDate = new Date('2023-02-14'); // Configurable in Tab 5 Settings
+
+function calculateDays() {
+  const today = new Date();
+  const diffTime = Math.abs(today - startDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  document.getElementById('days-count').innerText = `${diffDays} Days`;
+}
+calculateDays();
+
+// --- REQUIREMENT 4: PHOTO CREATED DATE FROM EXIF ---
+function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Use EXIF.js to read photo metadata
+  EXIF.getData(file, function() {
+    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+    let photoCreatedDate;
+
+    if (exifDate) {
+      // EXIF format usually: "YYYY:MM:DD HH:MM:SS"
+      const parts = exifDate.split(" ");
+      const dateParts = parts[0].split(":");
+      photoCreatedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    } else {
+      // Fallback to file lastModified date if EXIF is absent
+      photoCreatedDate = new Date(file.lastModified);
+    }
+
+    console.log("Photo Created Date:", photoCreatedDate);
+    
+    // Save file metadata to Firebase / Google Drive with `photoCreatedDate`
+    uploadToGoogleDriveAndDatabase(file, photoCreatedDate);
+  });
+}
+
+function uploadToGoogleDriveAndDatabase(file, createdDate) {
+  // 1. Upload binary file to Google Shared Drive folder via API v3
+  // 2. Save document to Firestore:
+  //    { driveFileId: "...", createdDate: createdDate, uploadedBy: "User1" }
+  alert(`Uploading photo created on ${createdDate.toLocaleDateString()}`);
+}
+
+// --- REGISTER SERVICE WORKER FOR PWA INSTALLATION ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then(() => console.log('Service Worker Registered'));
+}
