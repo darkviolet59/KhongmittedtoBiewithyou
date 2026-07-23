@@ -87,7 +87,8 @@ button.primary.danger{background:#e86a86;box-shadow:none;}
 .couple-card,.block,.event,.settings,.settings-block,.note,.chat-card{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
 .month-head{font-weight:800;color:var(--text);opacity:.8;font-size:13px;margin:14px 4px 8px;text-shadow:0 1px 2px rgba(255,255,255,.5);}
 .notes-list{display:flex;flex-direction:column;gap:12px;}
-.note{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;}
+.note{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;cursor:pointer;}
+.note-modal-text{white-space:pre-wrap;word-break:break-word;line-height:1.55;max-height:52vh;overflow:auto;}
 .note.pinned{border:1.5px solid var(--accent);}
 .note-text{white-space:pre-wrap;word-break:break-word;line-height:1.5;}
 .note-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;}
@@ -99,7 +100,10 @@ button.primary.danger{background:#e86a86;box-shadow:none;}
 .viewer-date{position:absolute;top:calc(14px + env(safe-area-inset-top));left:16px;color:#fff;font-weight:700;font-size:14px;background:rgba(0,0,0,.28);padding:6px 12px;border-radius:999px;}
 textarea{font:inherit;color:var(--text);padding:11px 12px;border:1.5px solid #f0dbe4;border-radius:12px;background:#fff;width:100%;resize:vertical;}
 textarea:focus{outline:none;border-color:var(--accent);}
-.chat-list{height:calc(100vh - 240px);height:calc(100dvh - 240px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px 12px;}
+.chat-list{height:calc(100vh - 280px);height:calc(100dvh - 280px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px 12px;}
+.chat-note{text-align:center;font-size:11px;font-weight:600;color:var(--muted);background:#fff4f9;border-radius:999px;padding:6px 10px;margin-bottom:8px;}
+.cover-hint{color:var(--muted);font-size:11px;text-align:center;margin-bottom:10px;}
+input[type=range]{accent-color:var(--accent);padding:0;}
 .msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;}
 .msg.me{align-self:flex-end;align-items:flex-end;}
 .msg .bubble{background:#fff;border-radius:16px;padding:9px 13px;box-shadow:var(--shadow);line-height:1.4;word-break:break-word;white-space:pre-wrap;}
@@ -130,6 +134,20 @@ textarea:focus{outline:none;border-color:var(--accent);}
 .usage-row{display:flex;justify-content:space-between;font-weight:700;font-size:14px;}
 .usage-bar{height:10px;border-radius:999px;background:#f0dbe4;overflow:hidden;margin-top:6px;}
 .usage-bar span{display:block;height:100%;background:var(--accent);border-radius:999px;}
+.todo-add{display:flex;gap:8px;margin-bottom:14px;}
+.todo-add input{flex:1;}
+.todo-addbtn{flex-shrink:0;padding:11px 16px;}
+.todo-list{display:flex;flex-direction:column;gap:8px;}
+.todo{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.todo-check{border:none;background:none;font-size:20px;cursor:pointer;flex-shrink:0;line-height:1;padding:0;}
+.todo-text{flex:1;word-break:break-word;}
+.todo.done .todo-text{text-decoration:line-through;opacity:.5;}
+.todo-del{border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px;flex-shrink:0;}
+.avatar-row{display:flex;gap:20px;justify-content:center;margin:4px 0;}
+.avatar-pick{border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.avatar-prev{width:64px;height:64px;border-radius:50%;background:linear-gradient(160deg,#fff,#ffe9f1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:inset 0 0 0 3px var(--accent);}
+.avatar-pick small{font-size:11px;color:var(--muted);font-weight:700;}
+.viewer img{touch-action:none;}
 #fab{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom));right:max(20px,calc(50% - 220px));width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;border:none;box-shadow:0 10px 24px rgba(255,143,171,.5);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 #bg-btn{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:max(20px,calc(50% - 220px));width:46px;height:46px;border-radius:50%;background:#fff;color:var(--accent);font-size:20px;border:1.5px solid var(--accent);box-shadow:0 6px 16px rgba(255,143,171,.35);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 .bg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px;}
@@ -183,8 +201,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     <button class="tab" data-tab="home"><span>🏠</span><small>Home</small></button>
     <button class="tab" data-tab="photos"><span>📷</span><small>Photos</small></button>
     <button class="tab" data-tab="notes"><span>📝</span><small>Notes</small></button>
-    <button class="tab" data-tab="calendar"><span>📅</span><small>Days</small></button>
     <button class="tab" data-tab="chat"><span>💬</span><small>Chat</small></button>
+    <button class="tab" data-tab="calendar"><span>📅</span><small>Days</small></button>
     <button class="tab" data-tab="settings"><span>⚙️</span><small>Settings</small></button>
   </nav>
 </div>
@@ -194,6 +212,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <input id="file-input" type="file" accept="image/*" multiple hidden>
 <input id="bg-input" type="file" accept="image/*" hidden>
 <input id="chat-photo-input" type="file" accept="image/*" hidden>
+<input id="avatar-input" type="file" accept="image/*" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -216,7 +235,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
 
   var THEMES={pink:"#ff8fab",peach:"#ff9e7d",lavender:"#b8a4ff",mint:"#5fcf9f",sky:"#7db8ff"};
-  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null,telegram:""};
+  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null,bgSrc:null,bgScale:1,bgX:0.5,bgY:0.5,telegram:"",avatar1:null,avatar2:null};
   var BUCKET="photos";
   var HEARTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C12 21 3 13.5 3 8.5C3 5.5 5.5 3 8.5 3C10.5 3 12 4.5 12 4.5C12 4.5 13.5 3 15.5 3C18.5 3 21 5.5 21 8.5C21 13.5 12 21 12 21Z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E\")";
   var DOTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='42' height='42'%3E%3Ccircle cx='21' cy='21' r='4' fill='%23ffffff' fill-opacity='0.55'/%3E%3C/svg%3E\")";
@@ -234,16 +253,18 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
-  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null};
-  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input");
+  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null,noteSub:"notes",avatarSlot:1};
+  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input"),avatarInput=$("#avatar-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
-  var lastPhotos=[], lastEvents=[], lastNotes=[], signedCache={};
+  var lastPhotos=[], lastEvents=[], lastNotes=[], lastTodos=[], signedCache={};
 
   /* ---------- helpers ---------- */
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
   function handleOf(email){return email?String(email).split("@")[0]:"";}
   function initialOf(email){var h=handleOf(email);return h?h.charAt(0).toUpperCase():"?";}
+  function avatarBig(slot){var url=slot===1?settings.avatar1:settings.avatar2,emo=slot===1?settings.emoji1:settings.emoji2;return url?'<div class="avatar" style="background:url(\''+url+'\') center/cover no-repeat"></div>':'<div class="avatar">'+esc(emo)+'</div>';}
+  function avatarInner(slot){var url=slot===1?settings.avatar1:settings.avatar2,emo=slot===1?settings.emoji1:settings.emoji2;return '<span class="avatar-prev"'+(url?' style="background-image:url(\''+url+'\')"':'')+'>'+(url?'':esc(emo))+'</span>';}
   function cellHtml(p){return '<div class="cell"><img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'">'+(p.owner?'<span class="who" title="'+esc(p.owner)+'">'+esc(initialOf(p.owner))+'</span>':'')+'</div>';}
   function fmtStamp(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function fmtTime(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
@@ -253,7 +274,17 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function groupByMonth(list){var out=[],cur=null;list.forEach(function(p){var k=monthKey(p);if(!cur||cur.key!==k){cur={key:k,label:monthLabel(p),items:[]};out.push(cur);}cur.items.push(p);});return out;}
   function findEvent(id){for(var i=0;i<lastEvents.length;i++)if(lastEvents[i].id===id)return lastEvents[i];return null;}
   function findNote(id){for(var i=0;i<lastNotes.length;i++)if(lastNotes[i].id===id)return lastNotes[i];return null;}
-  function noteHtml(n){return '<div class="note'+(n.pinned?" pinned":"")+'">'+(n.title?'<div class="note-title">'+esc(n.title)+'</div>':'')+(n.date?'<div class="note-when">'+fmtDate(n.date)+'</div>':'')+'<div class="note-text">'+esc(n.text)+'</div><div class="note-foot"><span class="note-who">'+(n.owner?"— "+esc(handleOf(n.owner)):"")+'</span><span class="note-actions"><button class="pin-btn'+(n.pinned?" on":"")+'" data-action="pin-note" data-id="'+n.id+'" title="Pin to Home">📌</button><button data-action="edit-note" data-id="'+n.id+'">✏️</button><button data-action="del-note" data-id="'+n.id+'">🗑️</button></span></div></div>';}
+  function findTodo(id){for(var i=0;i<lastTodos.length;i++)if(lastTodos[i].id===id)return lastTodos[i];return null;}
+  function editNote(id){var nt=findNote(id);if(!nt)return;modalForm({title:"Edit note ✏️",fields:[{name:"title",label:"Title",value:nt.title},{name:"date",label:"Date",type:"date",value:nt.date},{name:"text",label:"Note",type:"textarea",value:nt.text}],okText:"Save"}).then(function(r){if(r&&(r.text.trim()||r.title.trim())){nt.title=r.title.trim();nt.text=r.text.trim();nt.date=r.date;Store.updateNote(nt).then(refresh).catch(cloudFail);}});}
+  function openNote(id){var n=findNote(id);if(!n)return;
+    var wrap=document.createElement("div");wrap.className="modal-overlay";
+    wrap.innerHTML='<div class="modal"><h3>'+(n.title?esc(n.title):"Note")+'</h3>'+(n.date?'<div class="note-when" style="margin:-8px 0 10px">'+fmtDate(n.date)+'</div>':'')+'<div class="note-modal-text">'+esc(n.text)+'</div>'+(n.owner?'<div class="note-who" style="margin-top:10px">— '+esc(handleOf(n.owner))+'</div>':'')+'<div class="modal-btns"><button class="ghost" data-c>Close</button><button class="primary" data-e>Edit ✏️</button></div></div>';
+    $("#modal-root").appendChild(wrap);
+    function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+    wrap.querySelector("[data-c]").onclick=close;wrap.querySelector("[data-e]").onclick=function(){close();editNote(id);};
+    wrap.onclick=function(e){if(e.target===wrap)close();};
+  }
+  function noteHtml(n){return '<div class="note'+(n.pinned?" pinned":"")+'" data-action="open-note" data-id="'+n.id+'">'+(n.title?'<div class="note-title">'+esc(n.title)+'</div>':'')+(n.date?'<div class="note-when">'+fmtDate(n.date)+'</div>':'')+'<div class="note-text">'+esc(n.text)+'</div><div class="note-foot"><span class="note-who">'+(n.owner?"— "+esc(handleOf(n.owner)):"")+'</span><span class="note-actions"><button class="pin-btn'+(n.pinned?" on":"")+'" data-action="pin-note" data-id="'+n.id+'" title="Pin to Home">📌</button><button data-action="edit-note" data-id="'+n.id+'">✏️</button><button data-action="del-note" data-id="'+n.id+'">🗑️</button></span></div></div>';}
   function fmtDate(ds){if(!ds)return"";return new Date(ds+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function todayStr(){var d=new Date(),mm=String(d.getMonth()+1),dd=String(d.getDate());if(mm.length<2)mm="0"+mm;if(dd.length<2)dd="0"+dd;return d.getFullYear()+"-"+mm+"-"+dd;}
   function daysSince(ds){var d=new Date(ds+"T00:00:00");var n=new Date();n.setHours(0,0,0,0);return Math.max(0,Math.floor((n-d)/86400000));}
@@ -327,10 +358,11 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      that knows about the cloud — the rest of the app just calls Store.*.
      ===================================================================== */
   function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",url:""};}
-  function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0};}
+  function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0,coverId:r.cover_id||""};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
   function mapNote(r){return {id:r.id,title:r.title||"",text:r.text||"",date:r.note_date||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
   function mapMessage(r){return {id:r.id,text:r.text||"",image:r.image||"",createdAt:Number(r.created_at)||0,sender:r.sender_email||""};}
+  function mapTodo(r){return {id:r.id,text:r.text||"",done:!!r.done,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
 
   function signUrls(paths){
     var need=paths.filter(function(p){var c=signedCache[p];return !(c&&(Date.now()-c.ts)<50*60*1000);});
@@ -355,6 +387,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       return sb.storage.from(BUCKET).remove([path]).catch(function(){}).then(function(){return sb.from("photos").delete().eq("id",id);});},
     albums:function(){return sb.from("albums").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapAlbum);});},
     addAlbum:function(a){return sb.from("albums").insert({id:a.id,name:a.name,created_at:a.createdAt});},
+    updateAlbum:function(a){return sb.from("albums").update({name:a.name,cover_id:a.coverId||null}).eq("id",a.id);},
     deleteAlbum:function(id){return sb.from("photos").update({album_id:null}).eq("album_id",id).then(function(){return sb.from("albums").delete().eq("id",id);});},
     events:function(){return sb.from("events").select("*").then(function(res){if(res.error)throw res.error;lastEvents=(res.data||[]).map(mapEvent);return lastEvents;});},
     addEvent:function(e){return sb.from("events").insert({id:e.id,title:e.title,date:e.date,emoji:e.emoji,repeat:e.repeat,created_at:e.createdAt});},
@@ -366,6 +399,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     deleteNote:function(id){return sb.from("notes").delete().eq("id",id);},
     messages:function(){return sb.from("messages").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapMessage);});},
     addMessage:function(m){return sb.from("messages").insert({id:m.id,text:m.text,image:m.image||null,created_at:m.createdAt,sender_email:m.sender||null});},
+    todos:function(){return sb.from("todos").select("*").then(function(res){if(res.error)throw res.error;lastTodos=(res.data||[]).map(mapTodo);return lastTodos;});},
+    addTodo:function(t){return sb.from("todos").insert({id:t.id,text:t.text,done:!!t.done,created_at:t.createdAt,owner_email:t.owner||null});},
+    updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
+    deleteTodo:function(id){return sb.from("todos").delete().eq("id",id);},
     settings:function(){return sb.from("kv").select("value").eq("key","settings").maybeSingle().then(function(res){return res.data?res.data.value:null;});},
     saveSettings:function(s){return sb.from("kv").upsert({key:"settings",value:s});}
   };
@@ -394,9 +431,38 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return fb();
     function fb(){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var img=new Image();img.onload=function(){var w=img.width,h=img.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);res(c.toDataURL("image/jpeg",q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
   }
+  function onAvatarUpload(){var f=avatarInput.files[0];if(!f)return;var slot=state.avatarSlot||1;showToast("Updating photo…");
+    resizeToDataUrl(f,240,0.85).then(function(url){settings["avatar"+slot]=url;return Store.saveSettings(settings);}).then(function(){showToast("Photo updated 💕");renderSettings();}).catch(function(){showToast("Couldn’t set that photo");}).then(function(){avatarInput.value="";});
+  }
   function pickBgPhoto(){bgInput.value="";bgInput.click();}
-  function onBgUpload(){var f=bgInput.files[0];if(!f)return;showToast("Setting background…");
-    resizeToDataUrl(f).then(function(url){settings.bgPhoto=url;settings.bg="photo";applyBackground();return Store.saveSettings(settings);}).then(function(){showToast("Background updated 🎨");}).catch(function(){showToast("Couldn’t set that image");}).then(function(){bgInput.value="";});
+  function onBgUpload(){var f=bgInput.files[0];if(!f)return;showToast("Loading photo…");
+    resizeToDataUrl(f,1400,0.85).then(function(url){settings.bgSrc=url;settings.bgScale=1;settings.bgX=0.5;settings.bgY=0.5;bgInput.value="";openBgEditor();}).catch(function(){showToast("Couldn’t load that image");bgInput.value="";});
+  }
+  function drawCover(ctx,img,W,H){var ar=img.width/img.height,car=W/H,dw,dh;if(ar>car){dh=H;dw=H*ar;}else{dw=W;dh=W/ar;}ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);}
+  function drawComposite(ctx,img,scale,cx,cy,W,H){ctx.clearRect(0,0,W,H);ctx.filter="blur("+(W*0.03)+"px)";drawCover(ctx,img,W,H);ctx.filter="none";var ar=img.width/img.height,car=W/H,bw,bh;if(ar>car){bw=W;bh=W/ar;}else{bh=H;bw=H*ar;}var dw=bw*scale,dh=bh*scale;ctx.drawImage(img,cx*W-dw/2,cy*H-dh/2,dw,dh);}
+  function compositeBg(img,scale,cx,cy,W,H){var c=document.createElement("canvas");c.width=W;c.height=H;drawComposite(c.getContext("2d"),img,scale,cx,cy,W,H);return c.toDataURL("image/jpeg",0.85);}
+  function openBgEditor(){
+    if(!settings.bgSrc){pickBgPhoto();return;}
+    var img=new Image();
+    img.onload=function(){
+      var scale=settings.bgScale||1,cx=(settings.bgX==null?0.5:settings.bgX),cy=(settings.bgY==null?0.5:settings.bgY);
+      var wrap=document.createElement("div");wrap.className="modal-overlay";
+      wrap.innerHTML='<div class="modal"><h3>Adjust background 🖼️</h3><canvas id="bg-ed" width="180" height="360" style="width:180px;height:360px;border-radius:14px;display:block;margin:0 auto;touch-action:none;background:#eee"></canvas><label style="margin-top:12px">Size<input id="bg-scale" type="range" min="0.3" max="2" step="0.01" value="'+scale+'"></label><p class="muted small" style="text-align:center;margin:2px 0">Drag the photo to move it.</p><div class="modal-btns"><button class="ghost" data-c>Cancel</button><button class="primary" data-s>Save</button></div></div>';
+      $("#modal-root").appendChild(wrap);
+      var cv=wrap.querySelector("#bg-ed"),c2=cv.getContext("2d");
+      function draw(){drawComposite(c2,img,scale,cx,cy,180,360);}
+      draw();
+      wrap.querySelector("#bg-scale").oninput=function(){scale=parseFloat(this.value);draw();};
+      var dragging=false,lx=0,ly=0;
+      function pt(e){var r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+      cv.addEventListener("pointerdown",function(e){dragging=true;var p=pt(e);lx=p.x;ly=p.y;});
+      cv.addEventListener("pointermove",function(e){if(!dragging)return;var p=pt(e);cx=Math.max(0,Math.min(1,cx+(p.x-lx)/180));cy=Math.max(0,Math.min(1,cy+(p.y-ly)/360));lx=p.x;ly=p.y;draw();});
+      cv.addEventListener("pointerup",function(){dragging=false;});cv.addEventListener("pointerleave",function(){dragging=false;});
+      function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+      wrap.querySelector("[data-c]").onclick=close;wrap.onclick=function(e){if(e.target===wrap)close();};
+      wrap.querySelector("[data-s]").onclick=function(){settings.bgScale=scale;settings.bgX=cx;settings.bgY=cy;settings.bg="photo";settings.bgPhoto=compositeBg(img,scale,cx,cy,1080,2160);applyBackground();Store.saveSettings(settings).catch(function(){});close();showToast("Background updated 🎨");};
+    };
+    img.src=settings.bgSrc;
   }
   function openBackgroundPicker(){
     var wrap=document.createElement("div");wrap.className="modal-overlay";
@@ -417,7 +483,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var plbl=document.createElement("small");plbl.textContent="My Photo";
     pbtn.appendChild(pprev);pbtn.appendChild(plbl);pbtn.onclick=function(){close();pickBgPhoto();};grid.appendChild(pbtn);
     modal.appendChild(grid);
-    if(settings.bgPhoto){var rm=document.createElement("button");rm.className="danger-link";rm.textContent="Remove my photo";rm.onclick=function(){settings.bgPhoto=null;if(settings.bg==="photo")settings.bg="hearts";saveAndApplyBg();close();};modal.appendChild(rm);}
+    if(settings.bgSrc){var adj=document.createElement("button");adj.className="ghost";adj.textContent="Adjust photo 🖼️";adj.onclick=function(){close();openBgEditor();};modal.appendChild(adj);}
+    if(settings.bgPhoto){var rm=document.createElement("button");rm.className="danger-link";rm.textContent="Remove my photo";rm.onclick=function(){settings.bgPhoto=null;settings.bgSrc=null;if(settings.bg==="photo")settings.bg="hearts";saveAndApplyBg();close();};modal.appendChild(rm);}
     var bar=document.createElement("div");bar.className="modal-btns";
     var cb=document.createElement("button");cb.className="ghost";cb.textContent="Close";cb.onclick=function(){close();};bar.appendChild(cb);modal.appendChild(bar);
     wrap.appendChild(modal);$("#modal-root").appendChild(wrap);
@@ -444,7 +511,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return Store.notes().catch(function(){return [];}).then(function(notes){
       var pinned=notes.filter(function(n){return n.pinned;}).sort(function(a,b){return b.createdAt-a.createdAt;});
       var days=settings.anniversary?daysSince(settings.anniversary):null;
-      view.innerHTML='<section class="couple-card"><div class="avatars"><div class="avatar">'+esc(settings.emoji1)+'</div><div class="heart">💗</div><div class="avatar">'+esc(settings.emoji2)+'</div></div>'+
+      view.innerHTML='<section class="couple-card"><div class="avatars">'+avatarBig(1)+'<div class="heart">💗</div>'+avatarBig(2)+'</div>'+
         '<div class="names">'+esc(settings.name1)+' &amp; '+esc(settings.name2)+'</div>'+
         (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+'</section>'+
         '<div class="block-head main"><h2>Pinned notes 📌</h2><button class="link" data-tab="notes">All notes →</button></div>'+
@@ -480,9 +547,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return Promise.all([Store.albums(),Store.photos()]).then(function(r){
       var albums=r[0],photos=r[1];
       function count(id){return photos.filter(function(p){return p.albumId===id;}).length;}
-      function cover(id){var a=photos.filter(function(p){return p.albumId===id;}).sort(function(x,y){return y.createdAt-x.createdAt;});return a[0]?a[0].url:null;}
+      function cover(al){var inA=photos.filter(function(p){return p.albumId===al.id;});if(al.coverId){for(var i=0;i<inA.length;i++)if(inA[i].id===al.coverId)return inA[i].url;}inA.sort(function(x,y){return y.createdAt-x.createdAt;});return inA[0]?inA[0].url:null;}
       $("#subview").innerHTML='<div class="album-grid"><button class="album new" data-action="create-album"><span class="plus">＋</span><span>New Album</span></button>'+
-        albums.map(function(a){var c=cover(a.id);return '<button class="album" data-action="open-album" data-id="'+a.id+'"><div class="album-cover" style="'+(c?"background-image:url(\'"+c+"\')":"")+'">'+(c?"":"📷")+'</div><div class="album-name">'+esc(a.name)+'</div><div class="album-count">'+count(a.id)+' photos</div></button>';}).join("")+'</div>';
+        albums.map(function(a){var c=cover(a);return '<button class="album" data-action="open-album" data-id="'+a.id+'"><div class="album-cover" style="'+(c?"background-image:url(\'"+c+"\')":"")+'">'+(c?"":"📷")+'</div><div class="album-name">'+esc(a.name)+'</div><div class="album-count">'+count(a.id)+' photos</div></button>';}).join("")+'</div>';
       setFab(false);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
@@ -491,7 +558,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var album=r[0].filter(function(a){return a.id===id;})[0];
       if(!album){state.album=null;return renderAlbums();}
       var photos=r[1].filter(function(p){return p.albumId===id;}).sort(function(a,b){return b.createdAt-a.createdAt;});
-      $("#subview").innerHTML='<div class="album-head"><button class="back" data-action="back-albums">‹ Albums</button><h2>'+esc(album.name)+'</h2><button class="danger-link" data-action="delete-album" data-id="'+id+'">Delete</button></div>'+
+      $("#subview").innerHTML='<div class="album-head"><button class="back" data-action="back-albums">‹ Albums</button><h2>'+esc(album.name)+'</h2><span style="display:flex;gap:10px"><button class="link" data-action="rename-album" data-id="'+id+'">Rename</button><button class="danger-link" data-action="delete-album" data-id="'+id+'">Delete</button></span></div><div class="cover-hint">Tap a photo, then ⭐ to make it the album cover.</div>'+
         (photos.length?'<div class="grid">'+photos.map(cellHtml).join("")+'</div>':'<div class="empty big">📸<br>This album is empty<span>Tap the + button to add photos here</span></div>');
       setFab(true,id);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
@@ -520,15 +587,31 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     }).catch(cloudFail);
   }
   function renderNotes(){
+    view.innerHTML='<div class="subtabs"><button class="subtab'+(state.noteSub!=="todo"?" active":"")+'" data-notesub="notes">Notes</button><button class="subtab'+(state.noteSub==="todo"?" active":"")+'" data-notesub="todo">To-do</button></div><div id="notesub"><div class="empty">Loading 💫</div></div>';
+    setFab(false);
+    if(state.noteSub==="todo")return renderTodoList();
+    return renderNoteList();
+  }
+  function renderNoteList(){
     return Store.notes().catch(function(){return [];}).then(function(notes){
       notes.sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt;});
-      view.innerHTML='<div class="block-head main"><h2>Notes 📝</h2><button class="pill" data-action="add-note">＋ Add</button></div>'+
+      $("#notesub").innerHTML='<div class="block-head main"><h2>Notes 📝</h2><button class="pill" data-action="add-note">＋ Add</button></div>'+
         (notes.length?'<div class="notes-list">'+notes.map(noteHtml).join("")+'</div>':'<div class="empty big">📝<br>No notes yet<span>Add reminders, love notes, lists…</span></div>');
-      setFab(false);
     });
   }
+  function renderTodoList(){
+    return Store.todos().catch(function(){return [];}).then(function(todos){
+      todos.sort(function(a,b){return (a.done?1:0)-(b.done?1:0)||a.createdAt-b.createdAt;});
+      var items=todos.length?todos.map(function(t){return '<div class="todo'+(t.done?" done":"")+'"><button class="todo-check" data-action="toggle-todo" data-id="'+t.id+'">'+(t.done?"✅":"⬜")+'</button><span class="todo-text">'+esc(t.text)+'</span><button class="todo-del" data-action="del-todo" data-id="'+t.id+'">🗑️</button></div>';}).join(""):'<div class="empty">No to-dos yet — add one above ✨</div>';
+      $("#notesub").innerHTML='<div class="todo-add"><input id="todo-input" placeholder="Add a to-do…" autocomplete="off"><button class="primary todo-addbtn" data-action="add-todo">＋ Add</button></div><div class="todo-list">'+items+'</div>';
+      var ti=$("#todo-input");if(ti)ti.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addTodoFromInput();}});
+    });
+  }
+  function addTodoFromInput(){var ti=$("#todo-input");if(!ti)return;var text=(ti.value||"").trim();if(!text)return;ti.value="";
+    Store.addTodo({id:uid(),text:text,done:false,createdAt:Date.now(),owner:(session&&session.user&&session.user.email)||null}).then(function(){return renderTodoList();}).then(function(){var t2=$("#todo-input");if(t2)t2.focus();}).catch(cloudFail);
+  }
   function renderChat(){
-    view.innerHTML='<div id="chat-list" class="chat-list"><div class="empty">Loading 💫</div></div>'+
+    view.innerHTML='<div class="chat-note">🕊️ Messages &amp; photos here are deleted after 30 days</div><div id="chat-list" class="chat-list"><div class="empty">Loading 💫</div></div>'+
       '<div class="chat-bar"><button class="chat-attach" data-action="chat-photo" aria-label="Send photo">🖼️</button><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
     setFab(false);
     var inp=$("#chat-input");if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();sendChat();}});
@@ -548,7 +631,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function onChatPhoto(){var f=chatPhotoInput.files[0];if(!f)return;showToast("Sending photo…");
     resizeToDataUrl(f,900,0.55).then(function(url){return Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null});}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");}).then(function(){chatPhotoInput.value="";});
   }
-  function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");}
+  function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);}
   function renderSettings(){
     var s=settings, email=(session&&session.user)?session.user.email:"";
     view.innerHTML='<form class="settings" data-form="settings"><h2>Settings ⚙️</h2>'+
@@ -557,6 +640,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<div class="row"><label>Your emoji<input name="emoji1" value="'+esc(s.emoji1)+'" maxlength="4"></label><label>Partner emoji<input name="emoji2" value="'+esc(s.emoji2)+'" maxlength="4"></label></div>'+
       '<label>Anniversary<input type="date" name="anniversary" value="'+esc(s.anniversary)+'"></label>'+
       '<label>Theme colour<select name="theme">'+Object.keys(THEMES).map(function(t){return '<option value="'+t+'"'+(s.theme===t?" selected":"")+'>'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join("")+'</select></label>'+
+      '<label style="margin-top:2px">Profile photos</label><div class="avatar-row"><button type="button" class="avatar-pick" data-action="pick-avatar" data-slot="1">'+avatarInner(1)+'<small>'+esc(s.name1)+'</small></button><button type="button" class="avatar-pick" data-action="pick-avatar" data-slot="2">'+avatarInner(2)+'<small>'+esc(s.name2)+'</small></button></div>'+((s.avatar1||s.avatar2)?'<button type="button" class="ghost" data-action="clear-avatars">Remove profile photos</button>':'')+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
       '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>';
@@ -567,10 +651,22 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- viewer ---------- */
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
-    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
-    viewer.classList.add("open");
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
+    viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);
   }
   function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";}
+  function enableZoom(img){
+    var scale=1,tx=0,ty=0,sx=0,sy=0,panning=false,pd=0,ps=1;
+    function dist(t){var dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+    function apply(){img.style.transform="translate("+tx+"px,"+ty+"px) scale("+scale+")";}
+    img.style.transition="transform .15s";img.style.touchAction="none";
+    img.addEventListener("dblclick",function(e){e.preventDefault();if(scale>1){scale=1;tx=0;ty=0;}else{scale=2.5;}apply();});
+    img.addEventListener("wheel",function(e){e.preventDefault();scale=Math.min(5,Math.max(1,scale*(e.deltaY<0?1.15:1/1.15)));if(scale===1){tx=0;ty=0;}apply();},{passive:false});
+    img.addEventListener("touchstart",function(e){if(e.touches.length===2){pd=dist(e.touches);ps=scale;}else if(e.touches.length===1&&scale>1){panning=true;sx=e.touches[0].clientX-tx;sy=e.touches[0].clientY-ty;}},{passive:false});
+    img.addEventListener("touchmove",function(e){if(e.touches.length===2){e.preventDefault();img.style.transition="none";scale=Math.min(5,Math.max(1,ps*(dist(e.touches)/pd)));apply();}else if(panning&&e.touches.length===1){e.preventDefault();tx=e.touches[0].clientX-sx;ty=e.touches[0].clientY-sy;apply();}},{passive:false});
+    img.addEventListener("touchend",function(){img.style.transition="transform .15s";if(scale<=1){scale=1;tx=0;ty=0;apply();}panning=false;});
+    apply();
+  }
 
   /* ---------- modals ---------- */
   function modalForm(opts){return new Promise(function(resolve){
@@ -628,7 +724,12 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
 
   /* ---------- app lifecycle ---------- */
-  function startApp(){document.body.classList.remove("logged-out");ensureRealtime();
+  // Auto-delete only the CHAT (messages + the photos shared inside chat) after 30 days.
+  // The main photo gallery is kept forever.
+  function purgeOld(){var cutoff=Date.now()-30*86400000;
+    sb.from("messages").delete().lt("created_at",cutoff).catch(function(){});
+  }
+  function startApp(){document.body.classList.remove("logged-out");ensureRealtime();purgeOld();
     Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();go("home");})
       .catch(function(){settings=Object.assign({},DEFAULT_SETTINGS);applyTheme();applyBackground();go("home");});
   }
@@ -642,6 +743,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var t=e.target.closest("[data-tab],[data-sub],[data-action]");if(!t)return;
     if(t.dataset.tab){go(t.dataset.tab);return;}
     if(t.dataset.sub){state.sub=t.dataset.sub;state.album=null;renderPhotos();return;}
+    if(t.dataset.notesub){state.noteSub=t.dataset.notesub;renderNotes();return;}
     var a=t.dataset.action,id=t.dataset.id;
     if(a==="open-photo")openPhoto(id);
     else if(a==="close-viewer")closeViewer();
@@ -650,6 +752,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="album-pick"){var ph=findPhoto(id);if(ph)Store.albums().then(function(albums){var opts=[{value:"",label:"— No album —"}].concat(albums.map(function(al){return {value:al.id,label:al.name};}));modalForm({title:"Move to album 📁",fields:[{name:"albumId",label:"Album",type:"select",value:ph.albumId||"",options:opts}],okText:"Move"}).then(function(r){if(r){ph.albumId=r.albumId||null;Store.updatePhoto(ph).then(function(){showToast("Moved 📁");refresh();}).catch(cloudFail);}});});}
     else if(a==="create-album")modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create"}).then(function(r){if(r&&r.name.trim())Store.addAlbum({id:uid(),name:r.name.trim(),createdAt:Date.now()}).then(renderPhotos).catch(cloudFail);});
     else if(a==="open-album"){state.album=id;renderPhotos();}
+    else if(a==="rename-album"){Store.albums().then(function(als){var al=als.filter(function(x){return x.id===id;})[0];if(al)modalForm({title:"Rename album ✏️",fields:[{name:"name",label:"Album name",value:al.name}],okText:"Save"}).then(function(r){if(r&&r.name.trim()){al.name=r.name.trim();Store.updateAlbum(al).then(renderPhotos).catch(cloudFail);}});});}
+    else if(a==="set-cover"){var pc=findPhoto(id);if(pc&&pc.albumId)Store.albums().then(function(als){var al=als.filter(function(x){return x.id===pc.albumId;})[0];if(al){al.coverId=pc.id;Store.updateAlbum(al).then(function(){showToast("Album cover set ⭐");}).catch(cloudFail);}});}
     else if(a==="back-albums"){state.album=null;renderPhotos();}
     else if(a==="filter-owner"){state.owner=t.dataset.owner||null;renderAllPhotos();}
     else if(a==="delete-album")confirmModal("Delete this album? The photos stay safe in All Photos.").then(function(ok){if(ok)Store.deleteAlbum(id).then(function(){state.album=null;renderPhotos();}).catch(cloudFail);});
@@ -657,9 +761,13 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="delete-event")Store.deleteEvent(id).then(renderCalendar).catch(cloudFail);
     else if(a==="edit-event"){var ev=findEvent(id);if(ev)modalForm({title:"Edit day ✏️",fields:[{name:"title",label:"What is it?",value:ev.title},{name:"date",label:"Date",type:"date",value:ev.date},{name:"emoji",label:"Emoji",value:ev.emoji,maxlength:4},{name:"repeat",label:"Repeat",type:"select",value:ev.repeat,options:[{value:"yearly",label:"Every year"},{value:"once",label:"One time"}]}],okText:"Save"}).then(function(r){if(r&&r.title.trim()&&r.date)Store.updateEvent({id:id,title:r.title.trim(),date:r.date,emoji:r.emoji||"🎉",repeat:r.repeat}).then(renderCalendar).catch(cloudFail);});}
     else if(a==="add-note")modalForm({title:"New note 📝",fields:[{name:"title",label:"Title",placeholder:"Give it a title"},{name:"date",label:"Date",type:"date",value:todayStr()},{name:"text",label:"Note",type:"textarea",placeholder:"Write a reminder, a love note, a list…"}],okText:"Add"}).then(function(r){if(r&&(r.text.trim()||r.title.trim()))Store.addNote({id:uid(),title:r.title.trim(),text:r.text.trim(),date:r.date,pinned:false,createdAt:Date.now(),owner:(session&&session.user&&session.user.email)||null}).then(refresh).catch(cloudFail);});
-    else if(a==="edit-note"){var nt=findNote(id);if(nt)modalForm({title:"Edit note ✏️",fields:[{name:"title",label:"Title",value:nt.title},{name:"date",label:"Date",type:"date",value:nt.date},{name:"text",label:"Note",type:"textarea",value:nt.text}],okText:"Save"}).then(function(r){if(r&&(r.text.trim()||r.title.trim())){nt.title=r.title.trim();nt.text=r.text.trim();nt.date=r.date;Store.updateNote(nt).then(refresh).catch(cloudFail);}});}
+    else if(a==="edit-note")editNote(id);
+    else if(a==="open-note")openNote(id);
     else if(a==="del-note")confirmModal("Delete this note?").then(function(ok){if(ok)Store.deleteNote(id).then(refresh).catch(cloudFail);});
     else if(a==="pin-note"){var nn=findNote(id);if(nn){nn.pinned=!nn.pinned;Store.updateNote(nn).then(refresh).catch(cloudFail);}}
+    else if(a==="add-todo")addTodoFromInput();
+    else if(a==="toggle-todo"){var td=findTodo(id);if(td){td.done=!td.done;Store.updateTodo(td).then(function(){return renderTodoList();}).catch(cloudFail);}}
+    else if(a==="del-todo")Store.deleteTodo(id).then(function(){return renderTodoList();}).catch(cloudFail);
     else if(a==="send-chat")sendChat();
     else if(a==="chat-photo")chatPhotoInput.click();
     else if(a==="view-msg-img")openImage(t.getAttribute("src"));
@@ -667,6 +775,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="cal-next"){state.cal.m++;if(state.cal.m>11){state.cal.m=0;state.cal.y++;}state.cal.sel=null;renderCalendar();}
     else if(a==="cal-day"){var dy=parseInt(t.dataset.day,10);state.cal.sel=(state.cal.sel===dy?null:dy);renderCalendar();}
     else if(a==="install")doInstall();
+    else if(a==="pick-avatar"){state.avatarSlot=parseInt(t.dataset.slot,10)||1;avatarInput.click();}
+    else if(a==="clear-avatars"){settings.avatar1=null;settings.avatar2=null;Store.saveSettings(settings).then(function(){renderSettings();}).catch(cloudFail);}
     else if(a==="auth-toggle"){state.authMode=(state.authMode==="up"?"in":"up");renderAuth();}
     else if(a==="signout"){sb.auth.signOut();}
   });
@@ -693,6 +803,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     $("#bg-btn").addEventListener("click",openBackgroundPicker);
     bgInput.addEventListener("change",onBgUpload);
     chatPhotoInput.addEventListener("change",onChatPhoto);
+    avatarInput.addEventListener("change",onAvatarUpload);
     sb.auth.getSession().then(function(res){session=res.data.session;if(session)startApp();else showLogin();});
     sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_IN"&&s){startApp();}else if(evt==="SIGNED_OUT"){showLogin();}});
   }
