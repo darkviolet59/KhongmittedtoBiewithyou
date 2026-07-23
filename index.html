@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Us">
 <style>
-:root{--accent:#ff8fab;--bg1:#ffe3ee;--bg2:#fff0f5;--bg3:#eef4ff;--card:#ffffff;--text:#4a3b44;--muted:#9b8c94;--shadow:0 8px 24px rgba(255,143,171,.18);}
+:root{--accent:#ff8fab;--bg1:#ffe3ee;--bg2:#fff0f5;--bg3:#eef4ff;--card:rgba(255,255,255,0.3);--text:#4a3b44;--muted:#9b8c94;--shadow:0 8px 24px rgba(255,143,171,.18);}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Nunito,system-ui,sans-serif;color:var(--text);min-height:100vh;background-attachment:fixed;
@@ -45,6 +45,12 @@ h2{font-size:17px;margin:0;}
 .subtab.active{background:var(--accent);color:#fff;}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .grid .cell img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;cursor:pointer;background:#ffe9f1;}
+.grid .cell{position:relative;}
+.cell .who{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(255,143,171,.92);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+.who-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.who-chip{border:1.5px solid var(--accent);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+.who-chip.active{background:var(--accent);color:#fff;}
+.viewer-who{color:#fff;opacity:.85;margin-top:8px;font-size:13px;}
 .album-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 .album{border:none;background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:8px;cursor:pointer;text-align:left;}
 .album.new{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--accent);font-weight:700;min-height:158px;border:2px dashed var(--accent);background:rgba(255,255,255,.6);}
@@ -77,6 +83,30 @@ button.ghost{background:#fff;color:var(--accent);border:1.5px solid var(--accent
 button.primary.danger{background:#e86a86;box-shadow:none;}
 .muted{color:var(--muted);}
 .small{font-size:12px;font-weight:500;line-height:1.55;margin:0;}
+.couple-card,.block,.event,.settings,.settings-block,.note,.chat-card{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.month-head{font-weight:800;color:var(--text);opacity:.8;font-size:13px;margin:14px 4px 8px;text-shadow:0 1px 2px rgba(255,255,255,.5);}
+.notes-list{display:flex;flex-direction:column;gap:12px;}
+.note{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;}
+.note.pinned{border:1.5px solid var(--accent);}
+.note-text{white-space:pre-wrap;word-break:break-word;line-height:1.5;}
+.note-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;}
+.note-who{color:var(--muted);font-size:11px;font-weight:700;}
+.note-actions{display:flex;gap:2px;}
+.note-actions button{border:none;background:none;cursor:pointer;font-size:15px;opacity:.65;padding:2px 5px;}
+.note-actions .pin-btn.on{opacity:1;filter:drop-shadow(0 0 3px rgba(255,143,171,.8));}
+.chat-card{background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:26px;text-align:center;}
+.viewer-date{position:absolute;top:calc(14px + env(safe-area-inset-top));left:16px;color:#fff;font-weight:700;font-size:14px;background:rgba(0,0,0,.28);padding:6px 12px;border-radius:999px;}
+textarea{font:inherit;color:var(--text);padding:11px 12px;border:1.5px solid #f0dbe4;border-radius:12px;background:#fff;width:100%;resize:vertical;}
+textarea:focus{outline:none;border-color:var(--accent);}
+.chat-list{height:calc(100vh - 240px);height:calc(100dvh - 240px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px 12px;}
+.msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;}
+.msg.me{align-self:flex-end;align-items:flex-end;}
+.msg .bubble{background:#fff;border-radius:16px;padding:9px 13px;box-shadow:var(--shadow);line-height:1.4;word-break:break-word;white-space:pre-wrap;}
+.msg.me .bubble{background:var(--accent);color:#fff;}
+.msg-meta{font-size:10px;color:var(--muted);margin:3px 6px 0;}
+.chat-bar{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;gap:8px;padding:8px 12px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:5;}
+.chat-bar input{flex:1;}
+.chat-send{background:var(--accent);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:var(--shadow);}
 #fab{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom));right:max(20px,calc(50% - 220px));width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;border:none;box-shadow:0 10px 24px rgba(255,143,171,.5);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 #bg-btn{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:max(20px,calc(50% - 220px));width:46px;height:46px;border-radius:50%;background:#fff;color:var(--accent);font-size:20px;border:1.5px solid var(--accent);box-shadow:0 6px 16px rgba(255,143,171,.35);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 .bg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px;}
@@ -129,7 +159,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   <nav class="tab-bar">
     <button class="tab" data-tab="home"><span>🏠</span><small>Home</small></button>
     <button class="tab" data-tab="photos"><span>📷</span><small>Photos</small></button>
+    <button class="tab" data-tab="notes"><span>📝</span><small>Notes</small></button>
     <button class="tab" data-tab="calendar"><span>📅</span><small>Days</small></button>
+    <button class="tab" data-tab="chat"><span>💬</span><small>Chat</small></button>
     <button class="tab" data-tab="settings"><span>⚙️</span><small>Settings</small></button>
   </nav>
 </div>
@@ -160,7 +192,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
 
   var THEMES={pink:"#ff8fab",peach:"#ff9e7d",lavender:"#b8a4ff",mint:"#5fcf9f",sky:"#7db8ff"};
-  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null};
+  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null,telegram:""};
   var BUCKET="photos";
   var HEARTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C12 21 3 13.5 3 8.5C3 5.5 5.5 3 8.5 3C10.5 3 12 4.5 12 4.5C12 4.5 13.5 3 15.5 3C18.5 3 21 5.5 21 8.5C21 13.5 12 21 12 21Z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E\")";
   var DOTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='42' height='42'%3E%3Ccircle cx='21' cy='21' r='4' fill='%23ffffff' fill-opacity='0.55'/%3E%3C/svg%3E\")";
@@ -178,14 +210,26 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
-  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in"};
+  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null};
   var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
-  var lastPhotos=[], signedCache={};
+  var lastPhotos=[], lastEvents=[], lastNotes=[], signedCache={};
 
   /* ---------- helpers ---------- */
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+  function handleOf(email){return email?String(email).split("@")[0]:"";}
+  function initialOf(email){var h=handleOf(email);return h?h.charAt(0).toUpperCase():"?";}
+  function cellHtml(p){return '<div class="cell"><img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'">'+(p.owner?'<span class="who" title="'+esc(p.owner)+'">'+esc(initialOf(p.owner))+'</span>':'')+'</div>';}
+  function fmtStamp(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
+  function fmtTime(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
+  function photoDate(p){return p.takenAt||p.createdAt;}
+  function monthKey(p){var d=new Date(photoDate(p));return d.getFullYear()+"-"+d.getMonth();}
+  function monthLabel(p){var d=new Date(photoDate(p));return d.toLocaleDateString(undefined,{month:"long",year:"numeric"});}
+  function groupByMonth(list){var out=[],cur=null;list.forEach(function(p){var k=monthKey(p);if(!cur||cur.key!==k){cur={key:k,label:monthLabel(p),items:[]};out.push(cur);}cur.items.push(p);});return out;}
+  function findEvent(id){for(var i=0;i<lastEvents.length;i++)if(lastEvents[i].id===id)return lastEvents[i];return null;}
+  function findNote(id){for(var i=0;i<lastNotes.length;i++)if(lastNotes[i].id===id)return lastNotes[i];return null;}
+  function noteHtml(n){return '<div class="note'+(n.pinned?" pinned":"")+'"><div class="note-text">'+esc(n.text)+'</div><div class="note-foot"><span class="note-who">'+(n.owner?"— "+esc(handleOf(n.owner)):"")+'</span><span class="note-actions"><button class="pin-btn'+(n.pinned?" on":"")+'" data-action="pin-note" data-id="'+n.id+'" title="Pin to Home">📌</button><button data-action="edit-note" data-id="'+n.id+'">✏️</button><button data-action="del-note" data-id="'+n.id+'">🗑️</button></span></div></div>';}
   function fmtDate(ds){if(!ds)return"";return new Date(ds+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function daysSince(ds){var d=new Date(ds+"T00:00:00");var n=new Date();n.setHours(0,0,0,0);return Math.max(0,Math.floor((n-d)/86400000));}
   function nextOccur(e){var n=new Date();n.setHours(0,0,0,0);var d=new Date(e.date+"T00:00:00");if(e.repeat==="yearly"){d.setFullYear(n.getFullYear());if(d<n)d.setFullYear(n.getFullYear()+1);}return d.getTime();}
@@ -217,9 +261,11 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      events and settings live in their own tables. This is the only place
      that knows about the cloud — the rest of the app just calls Store.*.
      ===================================================================== */
-  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,path:r.path,url:""};}
+  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",url:""};}
   function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
+  function mapNote(r){return {id:r.id,text:r.text||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
+  function mapMessage(r){return {id:r.id,text:r.text||"",createdAt:Number(r.created_at)||0,sender:r.sender_email||""};}
 
   function signUrls(paths){
     var need=paths.filter(function(p){var c=signedCache[p];return !(c&&(Date.now()-c.ts)<50*60*1000);});
@@ -234,10 +280,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var rows=(res.data||[]).map(mapPhoto);
       return signUrls(rows.map(function(r){return r.path;})).then(function(m){rows.forEach(function(r){r.url=m[r.path]||"";});lastPhotos=rows;return rows;});
     });},
-    uploadPhoto:function(blob,albumId,contentType,ext){var id=uid(),path=id+"."+(ext||"jpg");
+    uploadPhoto:function(blob,albumId,contentType,ext,taken){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
       return sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){
         if(res.error)throw res.error;
-        return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),path:path});
+        return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner});
       }).then(function(res){if(res.error)throw res.error;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
     deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg");
@@ -245,9 +291,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     albums:function(){return sb.from("albums").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapAlbum);});},
     addAlbum:function(a){return sb.from("albums").insert({id:a.id,name:a.name,created_at:a.createdAt});},
     deleteAlbum:function(id){return sb.from("photos").update({album_id:null}).eq("album_id",id).then(function(){return sb.from("albums").delete().eq("id",id);});},
-    events:function(){return sb.from("events").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapEvent);});},
+    events:function(){return sb.from("events").select("*").then(function(res){if(res.error)throw res.error;lastEvents=(res.data||[]).map(mapEvent);return lastEvents;});},
     addEvent:function(e){return sb.from("events").insert({id:e.id,title:e.title,date:e.date,emoji:e.emoji,repeat:e.repeat,created_at:e.createdAt});},
     deleteEvent:function(id){return sb.from("events").delete().eq("id",id);},
+    updateEvent:function(e){return sb.from("events").update({title:e.title,date:e.date,emoji:e.emoji,repeat:e.repeat}).eq("id",e.id);},
+    notes:function(){return sb.from("notes").select("*").then(function(res){if(res.error)throw res.error;lastNotes=(res.data||[]).map(mapNote);return lastNotes;});},
+    addNote:function(n){return sb.from("notes").insert({id:n.id,text:n.text,pinned:!!n.pinned,created_at:n.createdAt,owner_email:n.owner||null});},
+    updateNote:function(n){return sb.from("notes").update({text:n.text,pinned:!!n.pinned}).eq("id",n.id);},
+    deleteNote:function(id){return sb.from("notes").delete().eq("id",id);},
+    messages:function(){return sb.from("messages").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapMessage);});},
+    addMessage:function(m){return sb.from("messages").insert({id:m.id,text:m.text,created_at:m.createdAt,sender_email:m.sender||null});},
     settings:function(){return sb.from("kv").select("value").eq("key","settings").maybeSingle().then(function(res){return res.data?res.data.value:null;});},
     saveSettings:function(s){return sb.from("kv").upsert({key:"settings",value:s});}
   };
@@ -309,7 +362,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function render(){if(!session)return;setActiveTab();var _bg=$("#bg-btn");if(_bg)_bg.style.display=(state.tab==="home")?"flex":"none";
     if(state.tab==="home")return renderHome();
     if(state.tab==="photos")return renderPhotos();
+    if(state.tab==="notes")return renderNotes();
     if(state.tab==="calendar")return renderCalendar();
+    if(state.tab==="chat")return renderChat();
     if(state.tab==="settings")return renderSettings();
   }
   function go(tab){state.tab=tab;state.album=null;window.scrollTo(0,0);render();}
@@ -317,17 +372,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function cloudFail(){showToast("Couldn’t reach the cloud — check your connection");}
 
   function renderHome(){
-    return Store.photos().then(function(photos){
-      photos.sort(function(a,b){return b.createdAt-a.createdAt;});
-      var recent=photos.slice(0,6);
+    return Store.notes().catch(function(){return [];}).then(function(notes){
+      var pinned=notes.filter(function(n){return n.pinned;}).sort(function(a,b){return b.createdAt-a.createdAt;});
       var days=settings.anniversary?daysSince(settings.anniversary):null;
       view.innerHTML='<section class="couple-card"><div class="avatars"><div class="avatar">'+esc(settings.emoji1)+'</div><div class="heart">💗</div><div class="avatar">'+esc(settings.emoji2)+'</div></div>'+
         '<div class="names">'+esc(settings.name1)+' &amp; '+esc(settings.name2)+'</div>'+
         (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+'</section>'+
-        '<section class="block"><div class="block-head"><h2>Recent moments</h2><button class="link" data-tab="photos">See all →</button></div>'+
-        (recent.length?'<div class="mini-grid">'+recent.map(function(p){return '<img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'">';}).join("")+'</div>':'<div class="empty">No photos yet — add your first one in 📷 Photos!</div>')+'</section>';
+        '<div class="block-head main"><h2>Pinned notes 📌</h2><button class="link" data-tab="notes">All notes →</button></div>'+
+        (pinned.length?'<div class="notes-list">'+pinned.map(noteHtml).join("")+'</div>':'<div class="empty">No pinned notes yet — pin one from the 📝 Notes tab.</div>');
       setFab(false);
-    }).catch(cloudFail);
+    });
   }
 
   function renderPhotos(){
@@ -337,9 +391,19 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return renderAlbums();
   }
   function renderAllPhotos(){
-    return Store.photos().then(function(photos){
-      photos.sort(function(a,b){return b.createdAt-a.createdAt;});
-      $("#subview").innerHTML=photos.length?'<div class="grid">'+photos.map(function(p){return '<div class="cell"><img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'"></div>';}).join("")+'</div>':'<div class="empty big">💕<br>No photos yet<span>Tap the + button to add your first memory</span></div>';
+    return Store.photos().then(function(all){
+      all.sort(function(a,b){return photoDate(b)-photoDate(a);});
+      var owners=[];all.forEach(function(p){if(p.owner&&owners.indexOf(p.owner)<0)owners.push(p.owner);});
+      var chips="";
+      if(owners.length>1){
+        chips='<div class="who-filter"><button class="who-chip'+(!state.owner?" active":"")+'" data-action="filter-owner" data-owner="">Everyone</button>'+
+          owners.map(function(o){return '<button class="who-chip'+(state.owner===o?" active":"")+'" data-action="filter-owner" data-owner="'+esc(o)+'">'+esc(handleOf(o))+'</button>';}).join("")+'</div>';
+      }
+      var photos=state.owner?all.filter(function(p){return p.owner===state.owner;}):all;
+      var body;
+      if(!photos.length){body='<div class="empty big">💕<br>No photos here yet<span>Tap the + button to add one</span></div>';}
+      else{body=groupByMonth(photos).map(function(g){return '<div class="month-head">'+esc(g.label)+'</div><div class="grid">'+g.items.map(cellHtml).join("")+'</div>';}).join("");}
+      $("#subview").innerHTML=chips+body;
       setFab(true,null);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
@@ -359,7 +423,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       if(!album){state.album=null;return renderAlbums();}
       var photos=r[1].filter(function(p){return p.albumId===id;}).sort(function(a,b){return b.createdAt-a.createdAt;});
       $("#subview").innerHTML='<div class="album-head"><button class="back" data-action="back-albums">‹ Albums</button><h2>'+esc(album.name)+'</h2><button class="danger-link" data-action="delete-album" data-id="'+id+'">Delete</button></div>'+
-        (photos.length?'<div class="grid">'+photos.map(function(p){return '<div class="cell"><img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'"></div>';}).join("")+'</div>':'<div class="empty big">📸<br>This album is empty<span>Tap the + button to add photos here</span></div>');
+        (photos.length?'<div class="grid">'+photos.map(cellHtml).join("")+'</div>':'<div class="empty big">📸<br>This album is empty<span>Tap the + button to add photos here</span></div>');
       setFab(true,id);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
@@ -367,9 +431,35 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return Store.events().then(function(events){
       events.sort(function(a,b){return sortKey(a)-sortKey(b);});
       view.innerHTML='<div class="block-head main"><h2>Special days 📅</h2><button class="pill" data-action="add-event">＋ Add</button></div>'+
-        (events.length?'<div class="events">'+events.map(function(e){return '<div class="event"><div class="event-emoji">'+esc(e.emoji||"🎉")+'</div><div class="event-main"><div class="event-title">'+esc(e.title)+'</div><div class="event-date">'+fmtDate(e.date)+(e.repeat==="yearly"?" · every year":"")+'</div></div><div class="event-count">'+countdown(e)+'</div><button class="x" data-action="delete-event" data-id="'+e.id+'">✕</button></div>';}).join("")+'</div>':'<div class="empty big">🗓️<br>No special days yet<span>Add your anniversary, birthdays, trips…</span></div>');
+        (events.length?'<div class="events">'+events.map(function(e){return '<div class="event"><div class="event-emoji">'+esc(e.emoji||"🎉")+'</div><div class="event-main"><div class="event-title">'+esc(e.title)+'</div><div class="event-date">'+fmtDate(e.date)+(e.repeat==="yearly"?" · every year":"")+'</div></div><div class="event-count">'+countdown(e)+'</div><button class="x" data-action="edit-event" data-id="'+e.id+'">✏️</button><button class="x" data-action="delete-event" data-id="'+e.id+'">✕</button></div>';}).join("")+'</div>':'<div class="empty big">🗓️<br>No special days yet<span>Add your anniversary, birthdays, trips…</span></div>');
       setFab(false);
     }).catch(cloudFail);
+  }
+  function renderNotes(){
+    return Store.notes().catch(function(){return [];}).then(function(notes){
+      notes.sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt;});
+      view.innerHTML='<div class="block-head main"><h2>Notes 📝</h2><button class="pill" data-action="add-note">＋ Add</button></div>'+
+        (notes.length?'<div class="notes-list">'+notes.map(noteHtml).join("")+'</div>':'<div class="empty big">📝<br>No notes yet<span>Add reminders, love notes, lists…</span></div>');
+      setFab(false);
+    });
+  }
+  function renderChat(){
+    view.innerHTML='<div id="chat-list" class="chat-list"><div class="empty">Loading 💫</div></div>'+
+      '<div class="chat-bar"><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
+    setFab(false);
+    var inp=$("#chat-input");if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();sendChat();}});
+    loadChat();
+  }
+  function loadChat(){var list=$("#chat-list");if(!list)return Promise.resolve();
+    return Store.messages().then(function(msgs){
+      msgs.sort(function(a,b){return a.createdAt-b.createdAt;});
+      var me=(session&&session.user)?session.user.email:"";
+      list.innerHTML=msgs.length?msgs.map(function(m){var mine=m.sender===me;return '<div class="msg'+(mine?" me":"")+'"><div class="bubble">'+esc(m.text)+'</div><div class="msg-meta">'+(mine?"":esc(handleOf(m.sender))+" · ")+fmtTime(m.createdAt)+'</div></div>';}).join(""):'<div class="empty">No messages yet — say hi 👋</div>';
+      list.scrollTop=list.scrollHeight;
+    }).catch(function(){list.innerHTML='<div class="empty">Couldn’t load chat — make sure you ran the setup step.</div>';});
+  }
+  function sendChat(){var inp=$("#chat-input");if(!inp)return;var text=(inp.value||"").trim();if(!text)return;inp.value="";
+    Store.addMessage({id:uid(),text:text,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null}).then(loadChat).catch(function(){showToast("Message didn’t send");inp.value=text;});
   }
   function renderSettings(){
     var s=settings, email=(session&&session.user)?session.user.email:"";
@@ -388,7 +478,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- viewer ---------- */
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
-    viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"");
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"");
     viewer.classList.add("open");
   }
   function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";}
@@ -398,6 +488,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var fields=opts.fields||[];var wrap=document.createElement("div");wrap.className="modal-overlay";
     wrap.innerHTML='<div class="modal"><h3>'+esc(opts.title)+'</h3><form>'+fields.map(function(f){
       if(f.type==="select")return '<label>'+esc(f.label)+'<select name="'+f.name+'">'+f.options.map(function(o){return '<option value="'+esc(o.value)+'"'+(o.value===f.value?" selected":"")+'>'+esc(o.label)+'</option>';}).join("")+'</select></label>';
+      if(f.type==="textarea")return '<label>'+esc(f.label)+'<textarea name="'+f.name+'" rows="4" placeholder="'+esc(f.placeholder||"")+'">'+esc(f.value||"")+'</textarea></label>';
       return '<label>'+esc(f.label)+'<input name="'+f.name+'" type="'+(f.type||"text")+'" value="'+esc(f.value||"")+'" placeholder="'+esc(f.placeholder||"")+'"'+(f.maxlength?' maxlength="'+f.maxlength+'"':"")+'></label>';
     }).join("")+'<div class="modal-btns"><button type="button" class="ghost" data-c>Cancel</button><button type="submit" class="primary">'+esc(opts.okText||"Save")+'</button></div></form></div>';
     $("#modal-root").appendChild(wrap);var form=wrap.querySelector("form");
@@ -405,7 +496,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     wrap.querySelector("[data-c]").onclick=function(){close(null);};
     wrap.onclick=function(e){if(e.target===wrap)close(null);};
     form.onsubmit=function(e){e.preventDefault();var o={};fields.forEach(function(f){o[f.name]=form.elements[f.name].value;});close(o);};
-    var first=form.querySelector("input,select");if(first)first.focus();
+    var first=form.querySelector("input,select,textarea");if(first)first.focus();
   });}
   function confirmModal(msg){return new Promise(function(resolve){
     var wrap=document.createElement("div");wrap.className="modal-overlay";
@@ -419,7 +510,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var files=Array.prototype.slice.call(fileInput.files);if(!files.length)return;
     var alb=state.uploadAlbumId||null;showToast("Uploading…");
     var chain=Promise.resolve();
-    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;chain=chain.then(function(){return processPhoto(f);}).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext);});});
+    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;var taken=f.lastModified||Date.now();chain=chain.then(function(){return processPhoto(f);}).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken);});});
     chain.then(function(){fileInput.value="";return refresh();}).then(function(){showToast("Added 💕");}).catch(function(){showToast("Upload failed — check your connection");});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
@@ -455,7 +546,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function showLogin(){session=null;setFab(false);state.authMode="in";renderAuth();}
   function ensureRealtime(){if(realtimeStarted)return;realtimeStarted=true;
     try{sb.channel("couple-sync").on("postgres_changes",{event:"*",schema:"public"},function(){scheduleRefresh();}).subscribe();}catch(e){}}
-  function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){if(session)render();},500);}
+  function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){if(!session)return;if(state.tab==="chat"&&$("#chat-list")){loadChat();return;}render();},500);}
 
   /* ---------- event delegation ---------- */
   document.addEventListener("click",function(e){
@@ -471,9 +562,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="create-album")modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create"}).then(function(r){if(r&&r.name.trim())Store.addAlbum({id:uid(),name:r.name.trim(),createdAt:Date.now()}).then(renderPhotos).catch(cloudFail);});
     else if(a==="open-album"){state.album=id;renderPhotos();}
     else if(a==="back-albums"){state.album=null;renderPhotos();}
+    else if(a==="filter-owner"){state.owner=t.dataset.owner||null;renderAllPhotos();}
     else if(a==="delete-album")confirmModal("Delete this album? The photos stay safe in All Photos.").then(function(ok){if(ok)Store.deleteAlbum(id).then(function(){state.album=null;renderPhotos();}).catch(cloudFail);});
     else if(a==="add-event")modalForm({title:"Add a special day 🎉",fields:[{name:"title",label:"What is it?",placeholder:"Anniversary, birthday…"},{name:"date",label:"Date",type:"date"},{name:"emoji",label:"Emoji",value:"🎉",maxlength:4},{name:"repeat",label:"Repeat",type:"select",value:"yearly",options:[{value:"yearly",label:"Every year"},{value:"once",label:"One time"}]}],okText:"Add"}).then(function(r){if(r&&r.title.trim()&&r.date)Store.addEvent({id:uid(),title:r.title.trim(),date:r.date,emoji:r.emoji||"🎉",repeat:r.repeat,createdAt:Date.now()}).then(renderCalendar).catch(cloudFail);});
     else if(a==="delete-event")Store.deleteEvent(id).then(renderCalendar).catch(cloudFail);
+    else if(a==="edit-event"){var ev=findEvent(id);if(ev)modalForm({title:"Edit day ✏️",fields:[{name:"title",label:"What is it?",value:ev.title},{name:"date",label:"Date",type:"date",value:ev.date},{name:"emoji",label:"Emoji",value:ev.emoji,maxlength:4},{name:"repeat",label:"Repeat",type:"select",value:ev.repeat,options:[{value:"yearly",label:"Every year"},{value:"once",label:"One time"}]}],okText:"Save"}).then(function(r){if(r&&r.title.trim()&&r.date)Store.updateEvent({id:id,title:r.title.trim(),date:r.date,emoji:r.emoji||"🎉",repeat:r.repeat}).then(renderCalendar).catch(cloudFail);});}
+    else if(a==="add-note")modalForm({title:"New note 📝",fields:[{name:"text",label:"Your note",type:"textarea",placeholder:"Write a reminder, a love note, a list…"}],okText:"Add"}).then(function(r){if(r&&r.text.trim())Store.addNote({id:uid(),text:r.text.trim(),pinned:false,createdAt:Date.now(),owner:(session&&session.user&&session.user.email)||null}).then(refresh).catch(cloudFail);});
+    else if(a==="edit-note"){var nt=findNote(id);if(nt)modalForm({title:"Edit note ✏️",fields:[{name:"text",label:"Your note",type:"textarea",value:nt.text}],okText:"Save"}).then(function(r){if(r&&r.text.trim()){nt.text=r.text.trim();Store.updateNote(nt).then(refresh).catch(cloudFail);}});}
+    else if(a==="del-note")confirmModal("Delete this note?").then(function(ok){if(ok)Store.deleteNote(id).then(refresh).catch(cloudFail);});
+    else if(a==="pin-note"){var nn=findNote(id);if(nn){nn.pinned=!nn.pinned;Store.updateNote(nn).then(refresh).catch(cloudFail);}}
+    else if(a==="send-chat")sendChat();
     else if(a==="install")doInstall();
     else if(a==="auth-toggle"){state.authMode=(state.authMode==="up"?"in":"up");renderAuth();}
     else if(a==="signout"){sb.auth.signOut();}
@@ -481,7 +579,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   document.addEventListener("submit",function(e){
     var sf=e.target.closest('[data-form="settings"]'),af=e.target.closest('[data-form="auth"]');
-    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(cloudFail);return;}
+    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";s.telegram=(el.telegram&&el.telegram.value)||"";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(cloudFail);return;}
     if(af){e.preventDefault();doAuth(af);}
   });
 
