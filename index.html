@@ -143,8 +143,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      (The anon key is meant to be public — it is safe to keep in GitHub.
       Your photos stay private because of the login + security rules.)
      ===================================================================== */
-  var SUPABASE_URL      = "PASTE_YOUR_PROJECT_URL_HERE";
-  var SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE";
+  var SUPABASE_URL      = "https://opwhxntgpeiygmmgdukt.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_EXtkLx6pH7xavaSL78hFMQ_aw-mCl6M";
   /* ===================================================================== */
 
   var $=function(s,r){return (r||document).querySelector(s);};
@@ -172,13 +172,20 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     if(diff===0)return"Today! 🎉";if(diff<0)return fmtDate(e.date);if(diff===1)return"Tomorrow";if(diff<30)return"in "+diff+" days";return"in "+Math.round(diff/30)+" mo";}
   function showToast(msg){var t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show");},2200);}
 
-  function canvasFromBitmap(bm,maxDim){var w=bm.width,h=bm.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(bm,0,0,w,h);if(bm.close)bm.close();return c;}
-  function canvasFromImage(img,maxDim){var w=img.width,h=img.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);return c;}
-  function canvasToBlob(c,q){return new Promise(function(res){c.toBlob(function(b){res(b);},"image/jpeg",q||0.85);});}
-  function readAndResizeBlob(file,maxDim,quality){maxDim=maxDim||1600;quality=quality||0.85;
-    if(window.createImageBitmap){return createImageBitmap(file,{imageOrientation:"from-image"}).then(function(bm){return canvasToBlob(canvasFromBitmap(bm,maxDim),quality);}).catch(fb);}
+  function canvasToBlob(c,q){return new Promise(function(res){c.toBlob(function(b){res(b);},"image/jpeg",q||0.95);});}
+  var WEB_SAFE={"image/jpeg":1,"image/jpg":1,"image/png":1,"image/webp":1,"image/gif":1};
+  function extFor(type){return {"image/jpeg":"jpg","image/jpg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"}[type]||"jpg";}
+  // FULL QUALITY: keep the ORIGINAL file exactly as-is when it's already a web-viewable format
+  // (no resizing, no re-compression — zero quality loss). Only iPhone HEIC/HEIF photos are
+  // converted once, at maximum quality, so they still display on every device.
+  function heicToJpeg(file){
+    if(window.createImageBitmap){return createImageBitmap(file,{imageOrientation:"from-image"}).then(function(bm){var c=document.createElement("canvas");c.width=bm.width;c.height=bm.height;c.getContext("2d").drawImage(bm,0,0);if(bm.close)bm.close();return canvasToBlob(c,0.95);}).catch(fb);}
     return fb();
-    function fb(){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var img=new Image();img.onload=function(){res(canvasToBlob(canvasFromImage(img,maxDim),quality));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
+    function fb(){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var img=new Image();img.onload=function(){var c=document.createElement("canvas");c.width=img.width;c.height=img.height;c.getContext("2d").drawImage(img,0,0);res(canvasToBlob(c,0.95));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
+  }
+  function processPhoto(file){
+    if(WEB_SAFE[file.type])return Promise.resolve({blob:file,contentType:file.type,ext:extFor(file.type)});
+    return heicToJpeg(file).then(function(blob){return {blob:blob,contentType:"image/jpeg",ext:"jpg"};});
   }
 
   /* =====================================================================
@@ -205,8 +212,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var rows=(res.data||[]).map(mapPhoto);
       return signUrls(rows.map(function(r){return r.path;})).then(function(m){rows.forEach(function(r){r.url=m[r.path]||"";});lastPhotos=rows;return rows;});
     });},
-    uploadPhoto:function(blob,albumId){var id=uid(),path=id+".jpg";
-      return sb.storage.from(BUCKET).upload(path,blob,{contentType:"image/jpeg",upsert:true}).then(function(res){
+    uploadPhoto:function(blob,albumId,contentType,ext){var id=uid(),path=id+"."+(ext||"jpg");
+      return sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){
         if(res.error)throw res.error;
         return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),path:path});
       }).then(function(res){if(res.error)throw res.error;});},
@@ -344,7 +351,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var files=Array.prototype.slice.call(fileInput.files);if(!files.length)return;
     var alb=state.uploadAlbumId||null;showToast("Uploading…");
     var chain=Promise.resolve();
-    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;chain=chain.then(function(){return readAndResizeBlob(f);}).then(function(blob){return Store.uploadPhoto(blob,alb);});});
+    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;chain=chain.then(function(){return processPhoto(f);}).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext);});});
     chain.then(function(){fileInput.value="";return refresh();}).then(function(){showToast("Added 💕");}).catch(function(){showToast("Upload failed — check your connection");});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
