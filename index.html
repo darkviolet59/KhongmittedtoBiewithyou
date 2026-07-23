@@ -78,13 +78,20 @@ button.primary.danger{background:#e86a86;box-shadow:none;}
 .muted{color:var(--muted);}
 .small{font-size:12px;font-weight:500;line-height:1.55;margin:0;}
 #fab{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom));right:max(20px,calc(50% - 220px));width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;border:none;box-shadow:0 10px 24px rgba(255,143,171,.5);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
+#bg-btn{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:max(20px,calc(50% - 220px));width:46px;height:46px;border-radius:50%;background:#fff;color:var(--accent);font-size:20px;border:1.5px solid var(--accent);box-shadow:0 6px 16px rgba(255,143,171,.35);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
+.bg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px;}
+.bg-swatch{border:none;background:none;cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.bg-prev{width:100%;aspect-ratio:1;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.12);background-position:center;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;border:2px solid transparent;}
+.bg-swatch.selected .bg-prev{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
+.bg-swatch small{font-size:11px;color:var(--muted);font-weight:600;}
+.bg-prev.photo{border:2px dashed var(--accent);background:#fff;}
 .tab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid #ffe0ea;padding-bottom:env(safe-area-inset-bottom);z-index:5;}
 .tab{flex:1;border:none;background:none;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);cursor:pointer;}
 .tab span{font-size:22px;filter:grayscale(.4);opacity:.65;transition:.15s;}
 .tab small{font-size:10px;font-weight:700;}
 .tab.active{color:var(--accent);}
 .tab.active span{filter:none;opacity:1;transform:translateY(-1px);}
-body.logged-out .tab-bar,body.logged-out #fab{display:none!important;}
+body.logged-out .tab-bar,body.logged-out #fab,body.logged-out #bg-btn{display:none!important;}
 .auth-wrap{max-width:340px;margin:7vh auto 0;}
 .auth-logo{text-align:center;font-size:52px;}
 .auth-title{text-align:center;font-weight:800;font-size:22px;margin:6px 0 2px;}
@@ -118,6 +125,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   <header class="app-header"><span class="logo">💕</span><span id="header-title">Us</span></header>
   <main id="view"></main>
   <button id="fab" aria-label="Add photos">＋</button>
+  <button id="bg-btn" aria-label="Change background">🎨</button>
   <nav class="tab-bar">
     <button class="tab" data-tab="home"><span>🏠</span><small>Home</small></button>
     <button class="tab" data-tab="photos"><span>📷</span><small>Photos</small></button>
@@ -129,6 +137,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <div id="modal-root"></div>
 <div id="toast" class="toast"></div>
 <input id="file-input" type="file" accept="image/*" multiple hidden>
+<input id="bg-input" type="file" accept="image/*" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -151,13 +160,26 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
 
   var THEMES={pink:"#ff8fab",peach:"#ff9e7d",lavender:"#b8a4ff",mint:"#5fcf9f",sky:"#7db8ff"};
-  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink"};
+  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null};
   var BUCKET="photos";
+  var HEARTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C12 21 3 13.5 3 8.5C3 5.5 5.5 3 8.5 3C10.5 3 12 4.5 12 4.5C12 4.5 13.5 3 15.5 3C18.5 3 21 5.5 21 8.5C21 13.5 12 21 12 21Z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E\")";
+  var DOTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='42' height='42'%3E%3Ccircle cx='21' cy='21' r='4' fill='%23ffffff' fill-opacity='0.55'/%3E%3C/svg%3E\")";
+  var STARS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='16' cy='20' r='1.6' fill='%23ffffff' fill-opacity='0.85'/%3E%3Ccircle cx='58' cy='46' r='1.1' fill='%23ffffff' fill-opacity='0.7'/%3E%3Ccircle cx='36' cy='66' r='1.5' fill='%23ffffff' fill-opacity='0.8'/%3E%3Ccircle cx='68' cy='12' r='1' fill='%23ffffff' fill-opacity='0.6'/%3E%3C/svg%3E\")";
+  var BACKGROUNDS={
+    hearts:{name:"Pink Hearts",css:HEARTS+",linear-gradient(160deg,#ffe3ee,#fff0f5 45%,#eef4ff)"},
+    peach:{name:"Peach",css:HEARTS+",linear-gradient(160deg,#ffe6d2,#fff2e8 50%,#ffe3ee)"},
+    lavender:{name:"Lavender",css:HEARTS+",linear-gradient(160deg,#e9e0ff,#f5f0ff 50%,#ffe9f5)"},
+    mint:{name:"Mint",css:HEARTS+",linear-gradient(160deg,#d7f3e6,#eefcf5 50%,#e3f7ff)"},
+    sky:{name:"Sky",css:HEARTS+",linear-gradient(160deg,#d7e9ff,#eef6ff 50%,#f3e9ff)"},
+    sunset:{name:"Sunset",css:"linear-gradient(160deg,#ffcbb0,#ffd9d0 40%,#ffd0e8 80%,#ecc9ff)"},
+    bubbles:{name:"Bubbles",css:DOTS+",linear-gradient(160deg,#ffe0ee,#e8f4ff)"},
+    starry:{name:"Starry Night",css:STARS+",linear-gradient(160deg,#3b2f63,#4a3a72 55%,#6a4a7e)"}
+  };
 
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
   var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in"};
-  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input");
+  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
   var lastPhotos=[], signedCache={};
 
@@ -234,11 +256,57 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- theme / chrome ---------- */
   function applyTheme(){var c=THEMES[settings.theme]||THEMES.pink;document.documentElement.style.setProperty("--accent",c);var m=$('meta[name="theme-color"]');if(m)m.setAttribute("content",c);var h=$("#header-title");if(h)h.textContent=(settings.name1||"Us")+" & "+(settings.name2||"");}
+  function applyBackground(){
+    var id=settings.bg||"hearts";
+    if(id==="photo"&&settings.bgPhoto){
+      document.body.style.background="linear-gradient(rgba(255,255,255,.4),rgba(255,255,255,.4)),url('"+settings.bgPhoto+"') center/cover no-repeat";
+      document.body.style.backgroundAttachment="fixed";return;
+    }
+    var b=BACKGROUNDS[id]||BACKGROUNDS.hearts;
+    document.body.style.background=b.css;document.body.style.backgroundAttachment="fixed";
+  }
+  function saveAndApplyBg(){applyBackground();Store.saveSettings(settings).catch(function(){});}
+  function resizeToDataUrl(file,maxDim,q){maxDim=maxDim||1400;q=q||0.82;
+    function fromBmp(bm){var w=bm.width,h=bm.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(bm,0,0,w,h);if(bm.close)bm.close();return c.toDataURL("image/jpeg",q);}
+    if(window.createImageBitmap){return createImageBitmap(file,{imageOrientation:"from-image"}).then(fromBmp).catch(fb);}
+    return fb();
+    function fb(){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var img=new Image();img.onload=function(){var w=img.width,h=img.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);res(c.toDataURL("image/jpeg",q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
+  }
+  function pickBgPhoto(){bgInput.value="";bgInput.click();}
+  function onBgUpload(){var f=bgInput.files[0];if(!f)return;showToast("Setting background…");
+    resizeToDataUrl(f).then(function(url){settings.bgPhoto=url;settings.bg="photo";applyBackground();return Store.saveSettings(settings);}).then(function(){showToast("Background updated 🎨");}).catch(function(){showToast("Couldn’t set that image");}).then(function(){bgInput.value="";});
+  }
+  function openBackgroundPicker(){
+    var wrap=document.createElement("div");wrap.className="modal-overlay";
+    var modal=document.createElement("div");modal.className="modal";
+    var hd=document.createElement("h3");hd.textContent="Choose a background 🎨";modal.appendChild(hd);
+    var grid=document.createElement("div");grid.className="bg-grid";
+    var cur=settings.bg||"hearts";
+    Object.keys(BACKGROUNDS).forEach(function(id){var b=BACKGROUNDS[id];
+      var btn=document.createElement("button");btn.className="bg-swatch"+(cur===id?" selected":"");
+      var prev=document.createElement("span");prev.className="bg-prev";prev.style.background=b.css;
+      var lbl=document.createElement("small");lbl.textContent=b.name;
+      btn.appendChild(prev);btn.appendChild(lbl);
+      btn.onclick=function(){settings.bg=id;saveAndApplyBg();close();};grid.appendChild(btn);
+    });
+    var pbtn=document.createElement("button");pbtn.className="bg-swatch"+(cur==="photo"?" selected":"");
+    var pprev=document.createElement("span");pprev.className="bg-prev photo";
+    if(settings.bgPhoto){pprev.style.backgroundImage="url('"+settings.bgPhoto+"')";pprev.style.backgroundSize="cover";pprev.style.backgroundPosition="center";}else{pprev.textContent="＋";}
+    var plbl=document.createElement("small");plbl.textContent="My Photo";
+    pbtn.appendChild(pprev);pbtn.appendChild(plbl);pbtn.onclick=function(){close();pickBgPhoto();};grid.appendChild(pbtn);
+    modal.appendChild(grid);
+    if(settings.bgPhoto){var rm=document.createElement("button");rm.className="danger-link";rm.textContent="Remove my photo";rm.onclick=function(){settings.bgPhoto=null;if(settings.bg==="photo")settings.bg="hearts";saveAndApplyBg();close();};modal.appendChild(rm);}
+    var bar=document.createElement("div");bar.className="modal-btns";
+    var cb=document.createElement("button");cb.className="ghost";cb.textContent="Close";cb.onclick=function(){close();};bar.appendChild(cb);modal.appendChild(bar);
+    wrap.appendChild(modal);$("#modal-root").appendChild(wrap);
+    function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+    wrap.onclick=function(e){if(e.target===wrap)close();};
+  }
   function setFab(show,albumId){var b=$("#fab");b.style.display=show?"flex":"none";state.uploadAlbumId=show?(albumId||null):null;}
   function setActiveTab(){$$(".tab").forEach(function(b){b.classList.toggle("active",b.dataset.tab===state.tab);});}
 
   /* ---------- renders ---------- */
-  function render(){if(!session)return;setActiveTab();
+  function render(){if(!session)return;setActiveTab();var _bg=$("#bg-btn");if(_bg)_bg.style.display=(state.tab==="home")?"flex":"none";
     if(state.tab==="home")return renderHome();
     if(state.tab==="photos")return renderPhotos();
     if(state.tab==="calendar")return renderCalendar();
@@ -381,8 +449,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- app lifecycle ---------- */
   function startApp(){document.body.classList.remove("logged-out");ensureRealtime();
-    Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();go("home");})
-      .catch(function(){settings=Object.assign({},DEFAULT_SETTINGS);applyTheme();go("home");});
+    Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();go("home");})
+      .catch(function(){settings=Object.assign({},DEFAULT_SETTINGS);applyTheme();applyBackground();go("home");});
   }
   function showLogin(){session=null;setFab(false);state.authMode="in";renderAuth();}
   function ensureRealtime(){if(realtimeStarted)return;realtimeStarted=true;
@@ -430,6 +498,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     $("#fab").addEventListener("click",function(){fileInput.value="";fileInput.click();});
     fileInput.addEventListener("change",onUpload);
+    $("#bg-btn").addEventListener("click",openBackgroundPicker);
+    bgInput.addEventListener("change",onBgUpload);
     sb.auth.getSession().then(function(res){session=res.data.session;if(session)startApp();else showLogin();});
     sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_IN"&&s){startApp();}else if(evt==="SIGNED_OUT"){showLogin();}});
   }
