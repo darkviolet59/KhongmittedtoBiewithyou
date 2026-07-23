@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ff8fab">
 <title>Us 💕</title>
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -441,11 +441,11 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   function pickBgPhoto(){bgInput.value="";bgInput.click();}
   function onBgUpload(){var f=bgInput.files[0];if(!f)return;showToast("Loading photo…");
-    resizeToDataUrl(f,1400,0.85).then(function(url){settings.bgSrc=url;settings.bgScale=1;settings.bgX=0.5;settings.bgY=0.5;bgInput.value="";openBgEditor();}).catch(function(){showToast("Couldn’t load that image");bgInput.value="";});
+    resizeToDataUrl(f,1000,0.78).then(function(url){settings.bgSrc=url;settings.bgScale=1;settings.bgX=0.5;settings.bgY=0.5;bgInput.value="";openBgEditor();}).catch(function(){showToast("Couldn’t load that image");bgInput.value="";});
   }
   function drawCover(ctx,img,W,H){var ar=img.width/img.height,car=W/H,dw,dh;if(ar>car){dh=H;dw=H*ar;}else{dw=W;dh=W/ar;}ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);}
   function drawComposite(ctx,img,scale,cx,cy,W,H){ctx.clearRect(0,0,W,H);ctx.filter="blur("+(W*0.03)+"px)";drawCover(ctx,img,W,H);ctx.filter="none";var ar=img.width/img.height,car=W/H,bw,bh;if(ar>car){bw=W;bh=W/ar;}else{bh=H;bw=H*ar;}var dw=bw*scale,dh=bh*scale;ctx.drawImage(img,cx*W-dw/2,cy*H-dh/2,dw,dh);}
-  function compositeBg(img,scale,cx,cy,W,H){var c=document.createElement("canvas");c.width=W;c.height=H;drawComposite(c.getContext("2d"),img,scale,cx,cy,W,H);return c.toDataURL("image/jpeg",0.85);}
+  function compositeBg(img,scale,cx,cy,W,H){var c=document.createElement("canvas");c.width=W;c.height=H;drawComposite(c.getContext("2d"),img,scale,cx,cy,W,H);return c.toDataURL("image/jpeg",0.72);}
   function openBgEditor(){
     if(!settings.bgSrc){pickBgPhoto();return;}
     var img=new Image();
@@ -465,7 +465,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       cv.addEventListener("pointerup",function(){dragging=false;});cv.addEventListener("pointerleave",function(){dragging=false;});
       function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
       wrap.querySelector("[data-c]").onclick=close;wrap.onclick=function(e){if(e.target===wrap)close();};
-      wrap.querySelector("[data-s]").onclick=function(){settings.bgScale=scale;settings.bgX=cx;settings.bgY=cy;settings.bg="photo";settings.bgPhoto=compositeBg(img,scale,cx,cy,1080,2160);applyBackground();Store.saveSettings(settings).catch(function(){});close();showToast("Background updated 🎨");};
+      wrap.querySelector("[data-s]").onclick=function(){settings.bgScale=scale;settings.bgX=cx;settings.bgY=cy;settings.bg="photo";settings.bgPhoto=compositeBg(img,scale,cx,cy,800,1600);applyBackground();close();showToast("Saving…");Store.saveSettings(settings).then(function(){showToast("Background saved 🎨");}).catch(function(){showToast("Couldn’t save — try a smaller photo");});};
     };
     img.src=settings.bgSrc;
   }
@@ -796,7 +796,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;var b=$("#install-btn");if(b)b.style.display="inline-flex";});
   window.addEventListener("appinstalled",function(){deferredPrompt=null;showToast("Installed 🎉");});
-  document.addEventListener("visibilitychange",function(){if(!document.hidden&&session)render();});
+  var _hiddenAt=0;
+  document.addEventListener("visibilitychange",function(){if(document.hidden){_hiddenAt=Date.now();}else if(session){if(Date.now()-_hiddenAt>30000)go("home");else render();}});
   window.addEventListener("focus",function(){if(session)render();});
 
   /* ---------- boot ---------- */
