@@ -23,11 +23,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Nu
 #view{flex:1;padding:16px 16px 100px;}
 .couple-card{background:var(--card);border-radius:26px;box-shadow:var(--shadow);padding:26px 20px;text-align:center;margin-bottom:18px;}
 .avatars{display:flex;align-items:center;justify-content:center;gap:6px;}
-.avatar{width:70px;height:70px;border-radius:50%;background:linear-gradient(160deg,#fff,#ffe9f1);display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:inset 0 0 0 3px var(--accent);}
+.avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(160deg,#fff,#ffe9f1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 3px var(--accent);flex-shrink:0;}
 .avatars .heart{font-size:26px;animation:beat 1.6s infinite;}
-.ch-heart{text-align:center;font-size:28px;margin-bottom:8px;animation:beat 1.6s infinite;}
-.ch-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.ch-center{flex:1;text-align:center;min-width:0;}
+.ch-top{display:flex;align-items:flex-end;justify-content:center;gap:14px;}
+.ch-person{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.ch-name{font-weight:800;font-size:13px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ch-heart2{font-size:26px;animation:beat 1.6s infinite;margin-bottom:16px;}
 @keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
 .names{font-weight:800;font-size:20px;margin-top:12px;}
 .counter{margin-top:6px;color:var(--muted);}
@@ -402,6 +403,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     deleteNote:function(id){return sb.from("notes").delete().eq("id",id);},
     messages:function(){return sb.from("messages").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapMessage);});},
     addMessage:function(m){return sb.from("messages").insert({id:m.id,text:m.text,image:m.image||null,created_at:m.createdAt,sender_email:m.sender||null});},
+    deleteMessage:function(id){return sb.from("messages").delete().eq("id",id);},
     todos:function(){return sb.from("todos").select("*").then(function(res){if(res.error)throw res.error;lastTodos=(res.data||[]).map(mapTodo);return lastTodos;});},
     addTodo:function(t){return sb.from("todos").insert({id:t.id,text:t.text,done:!!t.done,created_at:t.createdAt,owner_email:t.owner||null});},
     updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
@@ -515,9 +517,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var pinned=notes.filter(function(n){return n.pinned;}).sort(function(a,b){return b.createdAt-a.createdAt;});
       var days=settings.anniversary?daysSince(settings.anniversary):null;
       view.innerHTML='<section class="couple-card">'+
-        '<div class="ch-heart">💗</div>'+
-        '<div class="ch-row">'+avatarBig(1)+'<div class="ch-center"><div class="names">'+esc(settings.name1)+' &amp; '+esc(settings.name2)+'</div>'+
-        (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+'</div>'+avatarBig(2)+'</div>'+
+        '<div class="ch-top"><div class="ch-person"><span class="ch-name">'+esc(settings.name1)+'</span>'+avatarBig(1)+'</div><div class="ch-heart2">💗</div><div class="ch-person"><span class="ch-name">'+esc(settings.name2)+'</span>'+avatarBig(2)+'</div></div>'+
+        (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+
         '</section>'+
         (pinned.length?'<div class="notes-list">'+pinned.map(noteHtml).join("")+'</div>':'');
       setFab(false);
@@ -625,7 +626,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return Store.messages().then(function(msgs){
       msgs.sort(function(a,b){return a.createdAt-b.createdAt;});
       var me=(session&&session.user)?session.user.email:"";
-      list.innerHTML=msgs.length?msgs.map(function(m){var mine=m.sender===me;var inner=(m.image?'<img class="msg-img" src="'+m.image+'" data-action="view-msg-img">':'')+(m.text?'<span>'+esc(m.text)+'</span>':'');return '<div class="msg'+(mine?" me":"")+'"><div class="bubble'+(m.image?" hasimg":"")+'">'+inner+'</div><div class="msg-meta">'+(mine?"":esc(handleOf(m.sender))+" · ")+fmtTime(m.createdAt)+'</div></div>';}).join(""):'<div class="empty">No messages yet — say hi 👋</div>';
+      list.innerHTML=msgs.length?msgs.map(function(m){var mine=m.sender===me;var inner=(m.image?'<img class="msg-img" src="'+m.image+'" data-action="view-chat-img" data-id="'+m.id+'">':'')+(m.text?'<span>'+esc(m.text)+'</span>':'');return '<div class="msg'+(mine?" me":"")+'"><div class="bubble'+(m.image?" hasimg":"")+'">'+inner+'</div><div class="msg-meta">'+(mine?"":esc(handleOf(m.sender))+" · ")+fmtTime(m.createdAt)+'</div></div>';}).join(""):'<div class="empty">No messages yet — say hi 👋</div>';
       list.scrollTop=list.scrollHeight;
     }).catch(function(){list.innerHTML='<div class="empty">Couldn’t load chat — make sure you ran the setup step.</div>';});
   }
@@ -636,6 +637,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     resizeToDataUrl(f,900,0.55).then(function(url){return Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null});}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");}).then(function(){chatPhotoInput.value="";});
   }
   function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);}
+  function openChatImage(src,mid){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'"><div class="viewer-bar"><button class="danger" data-action="del-chat-photo" data-id="'+mid+'">🗑️ Delete</button></div>';viewer.classList.add("open");var z=viewer.querySelector("img");if(z)enableZoom(z);}
   function renderSettings(){
     var s=settings, email=(session&&session.user)?session.user.email:"";
     view.innerHTML='<form class="settings" data-form="settings"><h2>Settings ⚙️</h2>'+
@@ -774,7 +776,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="del-todo")Store.deleteTodo(id).then(function(){return renderTodoList();}).catch(cloudFail);
     else if(a==="send-chat")sendChat();
     else if(a==="chat-photo")chatPhotoInput.click();
-    else if(a==="view-msg-img")openImage(t.getAttribute("src"));
+    else if(a==="view-chat-img")openChatImage(t.getAttribute("src"),id);
+    else if(a==="del-chat-photo")confirmModal("Delete this photo from the chat?").then(function(ok){if(ok)Store.deleteMessage(id).then(function(){closeViewer();loadChat();}).catch(cloudFail);});
     else if(a==="cal-prev"){state.cal.m--;if(state.cal.m<0){state.cal.m=11;state.cal.y--;}state.cal.sel=null;renderCalendar();}
     else if(a==="cal-next"){state.cal.m++;if(state.cal.m>11){state.cal.m=0;state.cal.y++;}state.cal.sel=null;renderCalendar();}
     else if(a==="cal-day"){var dy=parseInt(t.dataset.day,10);state.cal.sel=(state.cal.sel===dy?null:dy);renderCalendar();}
