@@ -51,6 +51,7 @@ h2{font-size:17px;margin:0;}
 .who-chip{border:1.5px solid var(--accent);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
 .who-chip.active{background:var(--accent);color:#fff;}
 .viewer-who{color:#fff;opacity:.85;margin-top:8px;font-size:13px;}
+.viewer-loc{display:inline-block;color:#fff;margin-top:8px;font-size:13px;background:rgba(255,255,255,.18);padding:6px 12px;border-radius:999px;text-decoration:none;}
 .album-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 .album{border:none;background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:8px;cursor:pointer;text-align:left;}
 .album.new{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--accent);font-weight:700;min-height:158px;border:2px dashed var(--accent);background:rgba(255,255,255,.6);}
@@ -253,6 +254,46 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     if(WEB_SAFE[file.type])return Promise.resolve({blob:file,contentType:file.type,ext:extFor(file.type)});
     return heicToJpeg(file).then(function(blob){return {blob:blob,contentType:"image/jpeg",ext:"jpg"};});
   }
+  // Read the photo's EXIF metadata: the ORIGINAL capture date (when it was taken) and, if the
+  // photo was geotagged, its GPS latitude/longitude. Works for JPEGs that carry EXIF.
+  function readExifData(file){
+    return new Promise(function(resolve){
+      var out={date:null,lat:null,lon:null};
+      if(!/jpe?g/i.test(file.type||"")){resolve(out);return;}
+      var reader=new FileReader();
+      reader.onload=function(){
+        try{
+          var view=new DataView(reader.result);
+          if(view.getUint16(0)!==0xFFD8){resolve(out);return;}
+          var len=view.byteLength,offset=2,app1=-1;
+          while(offset+4<=len){var mk=view.getUint16(offset);if(mk===0xFFE1){app1=offset;break;}if((mk&0xFF00)!==0xFF00||mk===0xFFDA)break;offset+=2+view.getUint16(offset+2);}
+          if(app1<0){resolve(out);return;}
+          var ex=app1+4;if(view.getUint32(ex)!==0x45786966){resolve(out);return;}
+          var tiff=ex+6,bo=view.getUint16(tiff),le;if(bo===0x4949)le=true;else if(bo===0x4D4D)le=false;else{resolve(out);return;}
+          var u16=function(o){return view.getUint16(o,le);},u32=function(o){return view.getUint32(o,le);};
+          function ascii(e){var c=u32(e+4),o=c<=4?e+8:tiff+u32(e+8),s="";for(var k=0;k<c-1;k++){var ch=view.getUint8(o+k);if(ch)s+=String.fromCharCode(ch);}return s;}
+          function rat(o){var d=u32(o+4);return d?u32(o)/d:0;}
+          var ifd0=tiff+u32(tiff+4),n=u16(ifd0),exifP=null,gpsP=null,dt=null;
+          for(var i=0;i<n;i++){var e=ifd0+2+i*12,tg=u16(e);if(tg===0x8769)exifP=tiff+u32(e+8);else if(tg===0x8825)gpsP=tiff+u32(e+8);else if(tg===0x0132&&!dt)dt=ascii(e);}
+          if(exifP){var n2=u16(exifP);for(var j=0;j<n2;j++){var e2=exifP+2+j*12,t2=u16(e2);if(t2===0x9003||t2===0x9004){dt=ascii(e2);break;}}}
+          if(dt){var m=dt.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);if(m)out.date=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime();else{var m2=dt.match(/^(\d{4}):(\d{2}):(\d{2})/);if(m2)out.date=new Date(+m2[1],+m2[2]-1,+m2[3]).getTime();}if(out.date&&isNaN(out.date))out.date=null;}
+          if(gpsP){var gn=u16(gpsP),latRef="",lonRef="",latO=null,lonO=null;
+            for(var g=0;g<gn;g++){var ge=gpsP+2+g*12,gt=u16(ge);if(gt===0x0001)latRef=ascii(ge);else if(gt===0x0003)lonRef=ascii(ge);else if(gt===0x0002)latO=tiff+u32(ge+8);else if(gt===0x0004)lonO=tiff+u32(ge+8);}
+            if(latO&&lonO){var la=rat(latO)+rat(latO+8)/60+rat(latO+16)/3600,lo=rat(lonO)+rat(lonO+8)/60+rat(lonO+16)/3600;if(/S/i.test(latRef))la=-la;if(/W/i.test(lonRef))lo=-lo;if(isFinite(la)&&isFinite(lo)&&(la||lo)){out.lat=Math.round(la*1e6)/1e6;out.lon=Math.round(lo*1e6)/1e6;}}
+          }
+          resolve(out);
+        }catch(err){resolve(out);}
+      };
+      reader.onerror=function(){resolve(out);};
+      reader.readAsArrayBuffer(file.slice(0,256*1024));
+    });
+  }
+  // Turn GPS coordinates into a friendly place name (best-effort, via OpenStreetMap). Falls back to "".
+  function reverseGeocodeSafe(lat,lon){
+    var p=fetch("https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&lat="+lat+"&lon="+lon).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||!j.address)return"";var a=j.address;var city=a.city||a.town||a.village||a.suburb||a.county||a.state||"";var country=a.country||"";return [city,country].filter(Boolean).join(", ");}).catch(function(){return"";});
+    var t=new Promise(function(res){setTimeout(function(){res("");},4000);});
+    return Promise.race([p,t]);
+  }
 
   /* =====================================================================
      STORAGE LAYER — talks to your Supabase cloud.
@@ -261,7 +302,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      events and settings live in their own tables. This is the only place
      that knows about the cloud — the rest of the app just calls Store.*.
      ===================================================================== */
-  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",url:""};}
+  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",url:""};}
   function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
   function mapNote(r){return {id:r.id,text:r.text||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
@@ -280,10 +321,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var rows=(res.data||[]).map(mapPhoto);
       return signUrls(rows.map(function(r){return r.path;})).then(function(m){rows.forEach(function(r){r.url=m[r.path]||"";});lastPhotos=rows;return rows;});
     });},
-    uploadPhoto:function(blob,albumId,contentType,ext,taken){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
+    uploadPhoto:function(blob,albumId,contentType,ext,taken,lat,lon,place){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
       return sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){
         if(res.error)throw res.error;
-        return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner});
+        return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null});
       }).then(function(res){if(res.error)throw res.error;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
     deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg");
@@ -318,6 +359,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var b=BACKGROUNDS[id]||BACKGROUNDS.hearts;
     document.body.style.background=b.css;document.body.style.backgroundAttachment="fixed";
   }
+  // The chosen background shows on Home only; every other tab uses a plain white page.
+  function applyPageBg(){if(state.tab==="home"){applyBackground();}else{document.body.style.background="#ffffff";document.body.style.backgroundAttachment="scroll";}}
   function saveAndApplyBg(){applyBackground();Store.saveSettings(settings).catch(function(){});}
   function resizeToDataUrl(file,maxDim,q){maxDim=maxDim||1400;q=q||0.82;
     function fromBmp(bm){var w=bm.width,h=bm.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(bm,0,0,w,h);if(bm.close)bm.close();return c.toDataURL("image/jpeg",q);}
@@ -359,7 +402,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function setActiveTab(){$$(".tab").forEach(function(b){b.classList.toggle("active",b.dataset.tab===state.tab);});}
 
   /* ---------- renders ---------- */
-  function render(){if(!session)return;setActiveTab();var _bg=$("#bg-btn");if(_bg)_bg.style.display=(state.tab==="home")?"flex":"none";
+  function render(){if(!session)return;setActiveTab();var _bg=$("#bg-btn");if(_bg)_bg.style.display=(state.tab==="home")?"flex":"none";applyPageBg();
     if(state.tab==="home")return renderHome();
     if(state.tab==="photos")return renderPhotos();
     if(state.tab==="notes")return renderNotes();
@@ -478,7 +521,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- viewer ---------- */
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
-    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"");
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
     viewer.classList.add("open");
   }
   function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";}
@@ -510,7 +553,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     var files=Array.prototype.slice.call(fileInput.files);if(!files.length)return;
     var alb=state.uploadAlbumId||null;showToast("Uploading…");
     var chain=Promise.resolve();
-    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;var taken=f.lastModified||Date.now();chain=chain.then(function(){return processPhoto(f);}).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken);});});
+    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;chain=chain.then(function(){return readExifData(f);}).then(function(meta){var taken=meta.date||f.lastModified||Date.now();return (meta.lat!=null?reverseGeocodeSafe(meta.lat,meta.lon):Promise.resolve("")).then(function(place){return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,place);});});});});
     chain.then(function(){fileInput.value="";return refresh();}).then(function(){showToast("Added 💕");}).catch(function(){showToast("Upload failed — check your connection");});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
