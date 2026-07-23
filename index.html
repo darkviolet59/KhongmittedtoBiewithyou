@@ -108,6 +108,28 @@ textarea:focus{outline:none;border-color:var(--accent);}
 .chat-bar{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;gap:8px;padding:8px 12px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:5;}
 .chat-bar input{flex:1;}
 .chat-send{background:var(--accent);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:var(--shadow);}
+.chat-attach{background:#fff;color:var(--accent);border:1.5px solid var(--accent);border-radius:50%;width:44px;height:44px;font-size:16px;cursor:pointer;flex-shrink:0;}
+.msg-img{max-width:200px;max-height:240px;border-radius:12px;display:block;cursor:pointer;object-fit:cover;}
+.bubble.hasimg{padding:5px;background:#fff;}
+.msg.me .bubble.hasimg{background:var(--accent);}
+.bubble.hasimg span{display:block;padding:4px 8px 2px;}
+.note-title{font-weight:800;font-size:15px;margin-bottom:2px;}
+.note-when{color:var(--muted);font-size:11px;font-weight:700;margin-bottom:6px;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-title{font-weight:800;font-size:16px;}
+.cal-nav{border:1.5px solid var(--accent);background:#fff;border-radius:12px;width:42px;height:38px;color:var(--accent);font-size:18px;font-weight:800;cursor:pointer;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-dow{margin-bottom:6px;}
+.cal-dow span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);}
+.cal-cell{position:relative;aspect-ratio:1;border:none;background:#fbeef3;border-radius:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cal-cell.empty{background:transparent;cursor:default;}
+.cal-cell.today{outline:2px solid var(--accent);}
+.cal-cell.sel{background:var(--accent);color:#fff;}
+.cal-cell .cdot{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent);}
+.cal-cell.sel .cdot{background:#fff;}
+.usage-row{display:flex;justify-content:space-between;font-weight:700;font-size:14px;}
+.usage-bar{height:10px;border-radius:999px;background:#f0dbe4;overflow:hidden;margin-top:6px;}
+.usage-bar span{display:block;height:100%;background:var(--accent);border-radius:999px;}
 #fab{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom));right:max(20px,calc(50% - 220px));width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;border:none;box-shadow:0 10px 24px rgba(255,143,171,.5);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 #bg-btn{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:max(20px,calc(50% - 220px));width:46px;height:46px;border-radius:50%;background:#fff;color:var(--accent);font-size:20px;border:1.5px solid var(--accent);box-shadow:0 6px 16px rgba(255,143,171,.35);cursor:pointer;z-index:6;display:none;align-items:center;justify-content:center;}
 .bg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px;}
@@ -171,6 +193,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <div id="toast" class="toast"></div>
 <input id="file-input" type="file" accept="image/*" multiple hidden>
 <input id="bg-input" type="file" accept="image/*" hidden>
+<input id="chat-photo-input" type="file" accept="image/*" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -212,7 +235,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
   var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null};
-  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input");
+  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
   var lastPhotos=[], lastEvents=[], lastNotes=[], signedCache={};
 
@@ -230,8 +253,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function groupByMonth(list){var out=[],cur=null;list.forEach(function(p){var k=monthKey(p);if(!cur||cur.key!==k){cur={key:k,label:monthLabel(p),items:[]};out.push(cur);}cur.items.push(p);});return out;}
   function findEvent(id){for(var i=0;i<lastEvents.length;i++)if(lastEvents[i].id===id)return lastEvents[i];return null;}
   function findNote(id){for(var i=0;i<lastNotes.length;i++)if(lastNotes[i].id===id)return lastNotes[i];return null;}
-  function noteHtml(n){return '<div class="note'+(n.pinned?" pinned":"")+'"><div class="note-text">'+esc(n.text)+'</div><div class="note-foot"><span class="note-who">'+(n.owner?"— "+esc(handleOf(n.owner)):"")+'</span><span class="note-actions"><button class="pin-btn'+(n.pinned?" on":"")+'" data-action="pin-note" data-id="'+n.id+'" title="Pin to Home">📌</button><button data-action="edit-note" data-id="'+n.id+'">✏️</button><button data-action="del-note" data-id="'+n.id+'">🗑️</button></span></div></div>';}
+  function noteHtml(n){return '<div class="note'+(n.pinned?" pinned":"")+'">'+(n.title?'<div class="note-title">'+esc(n.title)+'</div>':'')+(n.date?'<div class="note-when">'+fmtDate(n.date)+'</div>':'')+'<div class="note-text">'+esc(n.text)+'</div><div class="note-foot"><span class="note-who">'+(n.owner?"— "+esc(handleOf(n.owner)):"")+'</span><span class="note-actions"><button class="pin-btn'+(n.pinned?" on":"")+'" data-action="pin-note" data-id="'+n.id+'" title="Pin to Home">📌</button><button data-action="edit-note" data-id="'+n.id+'">✏️</button><button data-action="del-note" data-id="'+n.id+'">🗑️</button></span></div></div>';}
   function fmtDate(ds){if(!ds)return"";return new Date(ds+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
+  function todayStr(){var d=new Date(),mm=String(d.getMonth()+1),dd=String(d.getDate());if(mm.length<2)mm="0"+mm;if(dd.length<2)dd="0"+dd;return d.getFullYear()+"-"+mm+"-"+dd;}
   function daysSince(ds){var d=new Date(ds+"T00:00:00");var n=new Date();n.setHours(0,0,0,0);return Math.max(0,Math.floor((n-d)/86400000));}
   function nextOccur(e){var n=new Date();n.setHours(0,0,0,0);var d=new Date(e.date+"T00:00:00");if(e.repeat==="yearly"){d.setFullYear(n.getFullYear());if(d<n)d.setFullYear(n.getFullYear()+1);}return d.getTime();}
   function sortKey(e){var n=new Date();n.setHours(0,0,0,0);var diff=Math.round((nextOccur(e)-n)/86400000);return diff>=0?diff:9000000-diff;}
@@ -305,8 +329,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",url:""};}
   function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
-  function mapNote(r){return {id:r.id,text:r.text||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
-  function mapMessage(r){return {id:r.id,text:r.text||"",createdAt:Number(r.created_at)||0,sender:r.sender_email||""};}
+  function mapNote(r){return {id:r.id,title:r.title||"",text:r.text||"",date:r.note_date||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
+  function mapMessage(r){return {id:r.id,text:r.text||"",image:r.image||"",createdAt:Number(r.created_at)||0,sender:r.sender_email||""};}
 
   function signUrls(paths){
     var need=paths.filter(function(p){var c=signedCache[p];return !(c&&(Date.now()-c.ts)<50*60*1000);});
@@ -337,16 +361,18 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     deleteEvent:function(id){return sb.from("events").delete().eq("id",id);},
     updateEvent:function(e){return sb.from("events").update({title:e.title,date:e.date,emoji:e.emoji,repeat:e.repeat}).eq("id",e.id);},
     notes:function(){return sb.from("notes").select("*").then(function(res){if(res.error)throw res.error;lastNotes=(res.data||[]).map(mapNote);return lastNotes;});},
-    addNote:function(n){return sb.from("notes").insert({id:n.id,text:n.text,pinned:!!n.pinned,created_at:n.createdAt,owner_email:n.owner||null});},
-    updateNote:function(n){return sb.from("notes").update({text:n.text,pinned:!!n.pinned}).eq("id",n.id);},
+    addNote:function(n){return sb.from("notes").insert({id:n.id,title:n.title||null,text:n.text,note_date:n.date||null,pinned:!!n.pinned,created_at:n.createdAt,owner_email:n.owner||null});},
+    updateNote:function(n){return sb.from("notes").update({title:n.title||null,text:n.text,note_date:n.date||null,pinned:!!n.pinned}).eq("id",n.id);},
     deleteNote:function(id){return sb.from("notes").delete().eq("id",id);},
     messages:function(){return sb.from("messages").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapMessage);});},
-    addMessage:function(m){return sb.from("messages").insert({id:m.id,text:m.text,created_at:m.createdAt,sender_email:m.sender||null});},
+    addMessage:function(m){return sb.from("messages").insert({id:m.id,text:m.text,image:m.image||null,created_at:m.createdAt,sender_email:m.sender||null});},
     settings:function(){return sb.from("kv").select("value").eq("key","settings").maybeSingle().then(function(res){return res.data?res.data.value:null;});},
     saveSettings:function(s){return sb.from("kv").upsert({key:"settings",value:s});}
   };
 
   function findPhoto(id){for(var i=0;i<lastPhotos.length;i++)if(lastPhotos[i].id===id)return lastPhotos[i];return null;}
+  function getStorageUsage(){return sb.storage.from(BUCKET).list("",{limit:1000}).then(function(res){if(res.error)throw res.error;var total=0;(res.data||[]).forEach(function(f){if(f.metadata&&f.metadata.size)total+=f.metadata.size;});return total;});}
+  function updateStorageUsage(){var el=$("#storage-usage");if(!el)return;getStorageUsage().then(function(bytes){var mb=bytes/1048576,limitMB=1024,pct=Math.min(100,Math.round(mb/limitMB*1000)/10);el.innerHTML='<div class="usage-row"><span>'+mb.toFixed(1)+' MB</span><span class="muted">of 1 GB used</span></div><div class="usage-bar"><span style="width:'+pct+'%"></span></div>';}).catch(function(){el.innerHTML='<p class="muted small">Couldn’t check storage right now.</p>';});}
 
   /* ---------- theme / chrome ---------- */
   function applyTheme(){var c=THEMES[settings.theme]||THEMES.pink;document.documentElement.style.setProperty("--accent",c);var m=$('meta[name="theme-color"]');if(m)m.setAttribute("content",c);var h=$("#header-title");if(h)h.textContent=(settings.name1||"Us")+" & "+(settings.name2||"");}
@@ -470,11 +496,26 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       setFab(true,id);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
+  function eventRowHtml(e){return '<div class="event"><div class="event-emoji">'+esc(e.emoji||"🎉")+'</div><div class="event-main"><div class="event-title">'+esc(e.title)+'</div><div class="event-date">'+fmtDate(e.date)+(e.repeat==="yearly"?" · every year":"")+'</div></div><div class="event-count">'+countdown(e)+'</div><button class="x" data-action="edit-event" data-id="'+e.id+'">✏️</button><button class="x" data-action="delete-event" data-id="'+e.id+'">✕</button></div>';}
+  function eventInMonth(e,y,m){var d=new Date(e.date+"T00:00:00");return e.repeat==="yearly"?d.getMonth()===m:(d.getFullYear()===y&&d.getMonth()===m);}
   function renderCalendar(){
     return Store.events().then(function(events){
-      events.sort(function(a,b){return sortKey(a)-sortKey(b);});
-      view.innerHTML='<div class="block-head main"><h2>Special days 📅</h2><button class="pill" data-action="add-event">＋ Add</button></div>'+
-        (events.length?'<div class="events">'+events.map(function(e){return '<div class="event"><div class="event-emoji">'+esc(e.emoji||"🎉")+'</div><div class="event-main"><div class="event-title">'+esc(e.title)+'</div><div class="event-date">'+fmtDate(e.date)+(e.repeat==="yearly"?" · every year":"")+'</div></div><div class="event-count">'+countdown(e)+'</div><button class="x" data-action="edit-event" data-id="'+e.id+'">✏️</button><button class="x" data-action="delete-event" data-id="'+e.id+'">✕</button></div>';}).join("")+'</div>':'<div class="empty big">🗓️<br>No special days yet<span>Add your anniversary, birthdays, trips…</span></div>');
+      if(!state.cal){var nw=new Date();state.cal={y:nw.getFullYear(),m:nw.getMonth(),sel:null};}
+      var y=state.cal.y,m=state.cal.m;
+      var days={};events.forEach(function(e){if(eventInMonth(e,y,m)){var dd=new Date(e.date+"T00:00:00").getDate();days[dd]=(days[dd]||0)+1;}});
+      var first=new Date(y,m,1),startDow=first.getDay(),dim=new Date(y,m+1,0).getDate();
+      var today=new Date();today.setHours(0,0,0,0);
+      var cells="";for(var i=0;i<startDow;i++)cells+='<div class="cal-cell empty"></div>';
+      for(var d=1;d<=dim;d++){var isT=(today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d);var sc=(state.cal.sel===d)?" sel":"";cells+='<button class="cal-cell'+(isT?" today":"")+sc+'" data-action="cal-day" data-day="'+d+'">'+d+(days[d]?'<span class="cdot"></span>':'')+'</button>';}
+      var list=events.filter(function(e){return eventInMonth(e,y,m)&&(!state.cal.sel||new Date(e.date+"T00:00:00").getDate()===state.cal.sel);});
+      list.sort(function(a,b){return new Date(a.date+"T00:00:00").getDate()-new Date(b.date+"T00:00:00").getDate();});
+      var title=first.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+      var listTitle=state.cal.sel?(first.toLocaleDateString(undefined,{month:"short"})+" "+state.cal.sel):"Events this month";
+      view.innerHTML='<div class="cal-head"><button class="cal-nav" data-action="cal-prev">‹</button><div class="cal-title">'+esc(title)+'</div><button class="cal-nav" data-action="cal-next">›</button></div>'+
+        '<div class="cal-grid cal-dow"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>'+
+        '<div class="cal-grid">'+cells+'</div>'+
+        '<div class="block-head main" style="margin-top:16px"><h2>'+esc(listTitle)+'</h2><button class="pill" data-action="add-event">＋ Add</button></div>'+
+        (list.length?'<div class="events">'+list.map(eventRowHtml).join("")+'</div>':'<div class="empty">No events '+(state.cal.sel?"on this day":"this month")+' — tap ＋ Add.</div>');
       setFab(false);
     }).catch(cloudFail);
   }
@@ -488,7 +529,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   function renderChat(){
     view.innerHTML='<div id="chat-list" class="chat-list"><div class="empty">Loading 💫</div></div>'+
-      '<div class="chat-bar"><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
+      '<div class="chat-bar"><button class="chat-attach" data-action="chat-photo" aria-label="Send photo">🖼️</button><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
     setFab(false);
     var inp=$("#chat-input");if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();sendChat();}});
     loadChat();
@@ -497,13 +538,17 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return Store.messages().then(function(msgs){
       msgs.sort(function(a,b){return a.createdAt-b.createdAt;});
       var me=(session&&session.user)?session.user.email:"";
-      list.innerHTML=msgs.length?msgs.map(function(m){var mine=m.sender===me;return '<div class="msg'+(mine?" me":"")+'"><div class="bubble">'+esc(m.text)+'</div><div class="msg-meta">'+(mine?"":esc(handleOf(m.sender))+" · ")+fmtTime(m.createdAt)+'</div></div>';}).join(""):'<div class="empty">No messages yet — say hi 👋</div>';
+      list.innerHTML=msgs.length?msgs.map(function(m){var mine=m.sender===me;var inner=(m.image?'<img class="msg-img" src="'+m.image+'" data-action="view-msg-img">':'')+(m.text?'<span>'+esc(m.text)+'</span>':'');return '<div class="msg'+(mine?" me":"")+'"><div class="bubble'+(m.image?" hasimg":"")+'">'+inner+'</div><div class="msg-meta">'+(mine?"":esc(handleOf(m.sender))+" · ")+fmtTime(m.createdAt)+'</div></div>';}).join(""):'<div class="empty">No messages yet — say hi 👋</div>';
       list.scrollTop=list.scrollHeight;
     }).catch(function(){list.innerHTML='<div class="empty">Couldn’t load chat — make sure you ran the setup step.</div>';});
   }
   function sendChat(){var inp=$("#chat-input");if(!inp)return;var text=(inp.value||"").trim();if(!text)return;inp.value="";
     Store.addMessage({id:uid(),text:text,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null}).then(loadChat).catch(function(){showToast("Message didn’t send");inp.value=text;});
   }
+  function onChatPhoto(){var f=chatPhotoInput.files[0];if(!f)return;showToast("Sending photo…");
+    resizeToDataUrl(f,900,0.55).then(function(url){return Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null});}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");}).then(function(){chatPhotoInput.value="";});
+  }
+  function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");}
   function renderSettings(){
     var s=settings, email=(session&&session.user)?session.user.email:"";
     view.innerHTML='<form class="settings" data-form="settings"><h2>Settings ⚙️</h2>'+
@@ -514,9 +559,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<label>Theme colour<select name="theme">'+Object.keys(THEMES).map(function(t){return '<option value="'+t+'"'+(s.theme===t?" selected":"")+'>'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join("")+'</select></label>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
+    updateStorageUsage();
   }
 
   /* ---------- viewer ---------- */
@@ -610,11 +656,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="add-event")modalForm({title:"Add a special day 🎉",fields:[{name:"title",label:"What is it?",placeholder:"Anniversary, birthday…"},{name:"date",label:"Date",type:"date"},{name:"emoji",label:"Emoji",value:"🎉",maxlength:4},{name:"repeat",label:"Repeat",type:"select",value:"yearly",options:[{value:"yearly",label:"Every year"},{value:"once",label:"One time"}]}],okText:"Add"}).then(function(r){if(r&&r.title.trim()&&r.date)Store.addEvent({id:uid(),title:r.title.trim(),date:r.date,emoji:r.emoji||"🎉",repeat:r.repeat,createdAt:Date.now()}).then(renderCalendar).catch(cloudFail);});
     else if(a==="delete-event")Store.deleteEvent(id).then(renderCalendar).catch(cloudFail);
     else if(a==="edit-event"){var ev=findEvent(id);if(ev)modalForm({title:"Edit day ✏️",fields:[{name:"title",label:"What is it?",value:ev.title},{name:"date",label:"Date",type:"date",value:ev.date},{name:"emoji",label:"Emoji",value:ev.emoji,maxlength:4},{name:"repeat",label:"Repeat",type:"select",value:ev.repeat,options:[{value:"yearly",label:"Every year"},{value:"once",label:"One time"}]}],okText:"Save"}).then(function(r){if(r&&r.title.trim()&&r.date)Store.updateEvent({id:id,title:r.title.trim(),date:r.date,emoji:r.emoji||"🎉",repeat:r.repeat}).then(renderCalendar).catch(cloudFail);});}
-    else if(a==="add-note")modalForm({title:"New note 📝",fields:[{name:"text",label:"Your note",type:"textarea",placeholder:"Write a reminder, a love note, a list…"}],okText:"Add"}).then(function(r){if(r&&r.text.trim())Store.addNote({id:uid(),text:r.text.trim(),pinned:false,createdAt:Date.now(),owner:(session&&session.user&&session.user.email)||null}).then(refresh).catch(cloudFail);});
-    else if(a==="edit-note"){var nt=findNote(id);if(nt)modalForm({title:"Edit note ✏️",fields:[{name:"text",label:"Your note",type:"textarea",value:nt.text}],okText:"Save"}).then(function(r){if(r&&r.text.trim()){nt.text=r.text.trim();Store.updateNote(nt).then(refresh).catch(cloudFail);}});}
+    else if(a==="add-note")modalForm({title:"New note 📝",fields:[{name:"title",label:"Title",placeholder:"Give it a title"},{name:"date",label:"Date",type:"date",value:todayStr()},{name:"text",label:"Note",type:"textarea",placeholder:"Write a reminder, a love note, a list…"}],okText:"Add"}).then(function(r){if(r&&(r.text.trim()||r.title.trim()))Store.addNote({id:uid(),title:r.title.trim(),text:r.text.trim(),date:r.date,pinned:false,createdAt:Date.now(),owner:(session&&session.user&&session.user.email)||null}).then(refresh).catch(cloudFail);});
+    else if(a==="edit-note"){var nt=findNote(id);if(nt)modalForm({title:"Edit note ✏️",fields:[{name:"title",label:"Title",value:nt.title},{name:"date",label:"Date",type:"date",value:nt.date},{name:"text",label:"Note",type:"textarea",value:nt.text}],okText:"Save"}).then(function(r){if(r&&(r.text.trim()||r.title.trim())){nt.title=r.title.trim();nt.text=r.text.trim();nt.date=r.date;Store.updateNote(nt).then(refresh).catch(cloudFail);}});}
     else if(a==="del-note")confirmModal("Delete this note?").then(function(ok){if(ok)Store.deleteNote(id).then(refresh).catch(cloudFail);});
     else if(a==="pin-note"){var nn=findNote(id);if(nn){nn.pinned=!nn.pinned;Store.updateNote(nn).then(refresh).catch(cloudFail);}}
     else if(a==="send-chat")sendChat();
+    else if(a==="chat-photo")chatPhotoInput.click();
+    else if(a==="view-msg-img")openImage(t.getAttribute("src"));
+    else if(a==="cal-prev"){state.cal.m--;if(state.cal.m<0){state.cal.m=11;state.cal.y--;}state.cal.sel=null;renderCalendar();}
+    else if(a==="cal-next"){state.cal.m++;if(state.cal.m>11){state.cal.m=0;state.cal.y++;}state.cal.sel=null;renderCalendar();}
+    else if(a==="cal-day"){var dy=parseInt(t.dataset.day,10);state.cal.sel=(state.cal.sel===dy?null:dy);renderCalendar();}
     else if(a==="install")doInstall();
     else if(a==="auth-toggle"){state.authMode=(state.authMode==="up"?"in":"up");renderAuth();}
     else if(a==="signout"){sb.auth.signOut();}
@@ -641,6 +692,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     fileInput.addEventListener("change",onUpload);
     $("#bg-btn").addEventListener("click",openBackgroundPicker);
     bgInput.addEventListener("change",onBgUpload);
+    chatPhotoInput.addEventListener("change",onChatPhoto);
     sb.auth.getSession().then(function(res){session=res.data.session;if(session)startApp();else showLogin();});
     sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_IN"&&s){startApp();}else if(evt==="SIGNED_OUT"){showLogin();}});
   }
