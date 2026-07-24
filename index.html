@@ -239,6 +239,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      ===================================================================== */
   var SUPABASE_URL      = "https://opwhxntgpeiygmmgdukt.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_EXtkLx6pH7xavaSL78hFMQ_aw-mCl6M";
+  // Cloudflare R2 photo storage (via your Worker). Leave "" to keep photos in Supabase.
+  var R2_WORKER = "https://khongmittedtobiewithyou.debbielim-59.workers.dev";
   /* ===================================================================== */
 
   var $=function(s,r){return (r||document).querySelector(s);};
@@ -371,7 +373,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      events and settings live in their own tables. This is the only place
      that knows about the cloud — the rest of the app just calls Store.*.
      ===================================================================== */
-  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",url:""};}
+  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",store:r.store||"supabase",url:""};}
   function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0,coverId:r.cover_id||""};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
   function mapNote(r){return {id:r.id,title:r.title||"",text:r.text||"",date:r.note_date||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
@@ -389,18 +391,23 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     photos:function(){return sb.from("photos").select("*").then(function(res){
       if(res.error)throw res.error;
       var rows=(res.data||[]).map(mapPhoto);
-      return signUrls(rows.map(function(r){return r.path;})).then(function(m){rows.forEach(function(r){r.url=m[r.path]||"";});lastPhotos=rows;return rows;});
+      var supaPaths=rows.filter(function(r){return r.store!=="r2";}).map(function(r){return r.path;});
+      return signUrls(supaPaths).then(function(m){rows.forEach(function(r){r.url=(r.store==="r2")?(R2_WORKER+"/file/"+encodeURIComponent(r.path)):(m[r.path]||"");});lastPhotos=rows;return rows;});
     });},
     uploadPhoto:function(blob,albumId,contentType,ext,taken,lat,lon,place,fp){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
-      return sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){
-        if(res.error)throw res.error;
-        var row={id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null};
+      var useR2=R2_WORKER&&R2_WORKER.indexOf("http")===0;var token=(session&&session.access_token)||"";
+      var put=useR2
+        ? fetch(R2_WORKER+"/upload?key="+encodeURIComponent(path),{method:"POST",headers:{"Content-Type":contentType||"image/jpeg","X-Token":token},body:blob}).then(function(r){if(!r.ok)throw new Error("R2 upload failed ("+r.status+")");})
+        : sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){if(res.error)throw res.error;});
+      return put.then(function(){
+        var row={id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null,store:useR2?"r2":"supabase"};
         if(fp!==undefined&&fp!==null)row.fp=fp;
         return sb.from("photos").insert(row);
       }).then(function(res){if(res.error)throw res.error;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
-    deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg");
-      return sb.storage.from(BUCKET).remove([path]).catch(function(){}).then(function(){return sb.from("photos").delete().eq("id",id);});},
+    deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg"),store=p?p.store:"supabase",token=(session&&session.access_token)||"";
+      var del=(store==="r2")?fetch(R2_WORKER+"/delete?key="+encodeURIComponent(path),{method:"POST",headers:{"X-Token":token}}).catch(function(){}):sb.storage.from(BUCKET).remove([path]).catch(function(){});
+      return del.then(function(){return sb.from("photos").delete().eq("id",id);});},
     albums:function(){return sb.from("albums").select("*").then(function(res){if(res.error)throw res.error;return (res.data||[]).map(mapAlbum);});},
     addAlbum:function(a){return sb.from("albums").insert({id:a.id,name:a.name,created_at:a.createdAt});},
     updateAlbum:function(a){return sb.from("albums").update({name:a.name,cover_id:a.coverId||null}).eq("id",a.id);},

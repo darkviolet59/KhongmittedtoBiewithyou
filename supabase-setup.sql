@@ -69,6 +69,7 @@ alter table notes add column if not exists note_date text;
 alter table messages add column if not exists image text;
 alter table albums add column if not exists cover_id text;
 alter table photos add column if not exists fp text;
+alter table photos add column if not exists store text;
 
 -- ---------- Security: only signed-in users can read/write ----------
 alter table photos   enable row level security;
