@@ -21,14 +21,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Nu
 .app-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;justify-content:center;padding:14px;padding-top:calc(14px + env(safe-area-inset-top));font-weight:800;font-size:18px;background:rgba(255,255,255,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
 .app-header .logo{font-size:20px;}
 #view{flex:1;padding:16px 16px 100px;}
-.couple-card{background:var(--card);border-radius:26px;box-shadow:var(--shadow);padding:26px 20px;text-align:center;margin-bottom:18px;}
+.couple-card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:14px 18px;text-align:center;margin-bottom:14px;}
 .avatars{display:flex;align-items:center;justify-content:center;gap:6px;}
-.avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(160deg,#fff,#ffe9f1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 0 0 3px var(--accent);flex-shrink:0;}
+.avatar{width:54px;height:54px;border-radius:50%;background:linear-gradient(160deg,#fff,#ffe9f1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:inset 0 0 0 3px var(--accent);flex-shrink:0;}
 .avatars .heart{font-size:26px;animation:beat 1.6s infinite;}
 .ch-top{display:flex;align-items:flex-end;justify-content:center;gap:14px;}
 .ch-person{display:flex;flex-direction:column;align-items:center;gap:5px;}
 .ch-name{font-weight:800;font-size:13px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ch-heart2{font-size:26px;animation:beat 1.6s infinite;margin-bottom:16px;}
+.ch-heart2{font-size:24px;animation:beat 1.6s infinite;margin-bottom:8px;}
 @keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
 .names{font-weight:800;font-size:20px;margin-top:12px;}
 .counter{margin-top:6px;color:var(--muted);}
@@ -117,6 +117,11 @@ input[type=range]{accent-color:var(--accent);padding:0;}
 .chat-bar input{flex:1;}
 .chat-send{background:var(--accent);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:var(--shadow);}
 .chat-attach{background:#fff;color:var(--accent);border:1.5px solid var(--accent);border-radius:50%;width:44px;height:44px;font-size:16px;cursor:pointer;flex-shrink:0;}
+.cam-overlay{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;}
+#cam-video{flex:1;width:100%;min-height:0;object-fit:cover;background:#000;}
+.cam-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px calc(20px + env(safe-area-inset-bottom));background:#000;}
+.cam-btn{background:rgba(255,255,255,.16);color:#fff;border:none;width:48px;height:48px;border-radius:50%;font-size:20px;cursor:pointer;}
+.cam-shot{width:68px;height:68px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);cursor:pointer;}
 .msg-img{max-width:200px;max-height:240px;border-radius:12px;display:block;cursor:pointer;object-fit:cover;}
 .bubble.hasimg{padding:5px;background:#fff;}
 .msg.me .bubble.hasimg{background:var(--accent);}
@@ -240,7 +245,11 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
 
   var THEMES={pink:"#ff8fab",peach:"#ff9e7d",lavender:"#b8a4ff",mint:"#5fcf9f",sky:"#7db8ff"};
-  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null,bgSrc:null,bgScale:1,bgX:0.5,bgY:0.5,telegram:"",avatar1:null,avatar2:null};
+  var SOUND_SEQS={twinkle:[{f:880,t:0,d:0.12},{f:1174,t:0.1,d:0.12},{f:1568,t:0.2,d:0.18}],chime:[{f:1046,t:0,d:0.15},{f:1318,t:0.12,d:0.15},{f:1568,t:0.24,d:0.26}],ding:[{f:1318,t:0,d:0.45}],pop:[{f:660,t:0,d:0.08},{f:990,t:0.06,d:0.1}],heart:[{f:784,t:0,d:0.1},{f:1046,t:0.09,d:0.16}]};
+  var audioCtx=null;
+  function ensureAudio(){try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx&&audioCtx.state==="suspended")audioCtx.resume();}catch(e){}}
+  function playSound(override){var name=override||settings.sound||"twinkle";if(name==="off")return;ensureAudio();if(!audioCtx)return;var seq=SOUND_SEQS[name]||SOUND_SEQS.twinkle,now=audioCtx.currentTime;seq.forEach(function(n){var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="sine";o.frequency.value=n.f;var t=now+n.t;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.28,t+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t+n.d);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+n.d+0.03);});}
+  var DEFAULT_SETTINGS={name1:"You",name2:"Me",emoji1:"🐻",emoji2:"🐰",anniversary:"",theme:"pink",bg:"hearts",bgPhoto:null,bgSrc:null,bgScale:1,bgX:0.5,bgY:0.5,telegram:"",avatar1:null,avatar2:null,sound:"twinkle"};
   var BUCKET="photos";
   var HEARTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C12 21 3 13.5 3 8.5C3 5.5 5.5 3 8.5 3C10.5 3 12 4.5 12 4.5C12 4.5 13.5 3 15.5 3C18.5 3 21 5.5 21 8.5C21 13.5 12 21 12 21Z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E\")";
   var DOTS="url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='42' height='42'%3E%3Ccircle cx='21' cy='21' r='4' fill='%23ffffff' fill-opacity='0.55'/%3E%3C/svg%3E\")";
@@ -412,7 +421,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
     deleteTodo:function(id){return sb.from("todos").delete().eq("id",id);},
     settings:function(){return sb.from("kv").select("key,value").in("key",["settings","bgphoto","bgsrc","avatar1","avatar2"]).then(function(res){if(res.error)throw res.error;var o={};(res.data||[]).forEach(function(r){o[r.key]=r.value;});var s=o.settings||{};function pick(kk,fld){var v=o[kk]||s[fld]||null;if(v&&!o[kk])Store.saveKV(kk,v).catch(function(){});s[fld]=v;}pick("bgphoto","bgPhoto");pick("bgsrc","bgSrc");pick("avatar1","avatar1");pick("avatar2","avatar2");return s;});},
-    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram};return sb.from("kv").upsert({key:"settings",value:core}).then(function(res){if(res.error)throw res.error;return res;});},
+    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram,sound:s.sound};return sb.from("kv").upsert({key:"settings",value:core}).then(function(res){if(res.error)throw res.error;return res;});},
     saveKV:function(key,val){return sb.from("kv").upsert({key:key,value:(val==null?null:val)}).then(function(res){if(res.error)throw res.error;return res;});}
   };
 
@@ -665,6 +674,27 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   function onChatPhoto(){chatPhotoFrom(chatPhotoInput);}
   function onChatCam(){chatPhotoFrom(chatCamInput);}
+  function openCamera(){
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){chatCamInput.click();return;}
+    var ov=document.createElement("div");ov.className="cam-overlay";
+    ov.innerHTML='<video id="cam-video" autoplay playsinline muted></video><div class="cam-bar"><button class="cam-btn" data-camx>✕</button><button class="cam-shot" data-camshot aria-label="Take photo"></button><button class="cam-btn" data-camflip>🔄</button></div>';
+    document.body.appendChild(ov);
+    var video=ov.querySelector("#cam-video"),facing="environment",stream=null;
+    function stop(){if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}}
+    function close(){stop();if(ov.parentNode)ov.parentNode.removeChild(ov);}
+    function start(){stop();navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false}).then(function(s){stream=s;video.srcObject=s;}).catch(function(){close();chatCamInput.click();});}
+    ov.querySelector("[data-camx]").onclick=close;
+    ov.querySelector("[data-camflip]").onclick=function(){facing=(facing==="environment"?"user":"environment");start();};
+    ov.querySelector("[data-camshot]").onclick=function(){
+      if(!video.videoWidth)return;
+      var maxd=900,w=video.videoWidth,h=video.videoHeight,sc=Math.min(1,maxd/Math.max(w,h));
+      var c=document.createElement("canvas");c.width=Math.round(w*sc);c.height=Math.round(h*sc);
+      c.getContext("2d").drawImage(video,0,0,c.width,c.height);
+      var url=c.toDataURL("image/jpeg",0.55);close();showToast("Sending photo…");
+      Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");});
+    };
+    start();
+  }
   function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);}
   function openChatImage(src,mid){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'"><div class="viewer-bar"><button class="danger" data-action="del-chat-photo" data-id="'+mid+'">🗑️ Delete</button></div>';viewer.classList.add("open");var z=viewer.querySelector("img");if(z)enableZoom(z);}
   function renderSettings(){
@@ -676,6 +706,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<label>Anniversary<input type="date" name="anniversary" value="'+esc(s.anniversary)+'"></label>'+
       '<label>Theme colour<select name="theme">'+Object.keys(THEMES).map(function(t){return '<option value="'+t+'"'+(s.theme===t?" selected":"")+'>'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';}).join("")+'</select></label>'+
       '<label style="margin-top:2px">Profile photos</label><div class="avatar-row"><button type="button" class="avatar-pick" data-action="pick-avatar" data-slot="1">'+avatarInner(1)+'<small>'+esc(s.name1)+'</small></button><button type="button" class="avatar-pick" data-action="pick-avatar" data-slot="2">'+avatarInner(2)+'<small>'+esc(s.name2)+'</small></button></div>'+((s.avatar1||s.avatar2)?'<button type="button" class="ghost" data-action="clear-avatars">Remove profile photos</button>':'')+
+      '<label>Notification sound<select name="sound">'+["twinkle","chime","ding","pop","heart","off"].map(function(o){return '<option value="'+o+'"'+((s.sound||"twinkle")===o?" selected":"")+'>'+o.charAt(0).toUpperCase()+o.slice(1)+'</option>';}).join("")+'</select></label>'+
+      '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
       '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>';
@@ -749,7 +781,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       return chain;
     }).then(function(){return refresh();}).then(function(){
       var added=total-skipped;
-      showToast(added>0?("Added "+added+(skipped?" · "+skipped+" already there":"")+" 💕"):(skipped+" already uploaded ✓"));
+      if(added>0)playSound();showToast(added>0?("Added "+added+(skipped?" · "+skipped+" already there":"")+" 💕"):(skipped+" already uploaded ✓"));
     }).catch(function(){showToast("Upload failed — check your connection");});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
@@ -789,7 +821,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   function showLogin(){session=null;setFab(false);state.authMode="in";renderAuth();}
   function ensureRealtime(){if(realtimeStarted)return;realtimeStarted=true;
-    try{sb.channel("couple-sync").on("postgres_changes",{event:"*",schema:"public"},function(){scheduleRefresh();}).subscribe();}catch(e){}}
+    try{sb.channel("couple-sync").on("postgres_changes",{event:"*",schema:"public"},function(payload){try{if(payload.eventType==="INSERT"){var me=(session&&session.user)?session.user.email:"";var row=payload.new||{};if(payload.table==="photos"&&row.owner_email&&row.owner_email!==me)playSound();else if(payload.table==="messages"&&row.sender_email&&row.sender_email!==me)playSound();}}catch(e){}scheduleRefresh();}).subscribe();}catch(e){}}
   function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){if(!session)return;if(state.tab==="chat"&&$("#chat-list")){loadChat();return;}render();},500);}
 
   /* ---------- event delegation ---------- */
@@ -824,13 +856,14 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="del-todo")Store.deleteTodo(id).then(function(){return renderTodoList();}).catch(cloudFail);
     else if(a==="send-chat")sendChat();
     else if(a==="chat-photo")chatPhotoInput.click();
-    else if(a==="chat-camera")chatCamInput.click();
+    else if(a==="chat-camera")openCamera();
     else if(a==="view-chat-img")openChatImage(t.getAttribute("src"),id);
     else if(a==="del-chat-photo")confirmModal("Delete this photo from the chat?").then(function(ok){if(ok)Store.deleteMessage(id).then(function(){closeViewer();loadChat();}).catch(cloudFail);});
     else if(a==="cal-prev"){state.cal.m--;if(state.cal.m<0){state.cal.m=11;state.cal.y--;}state.cal.sel=null;renderCalendar();}
     else if(a==="cal-next"){state.cal.m++;if(state.cal.m>11){state.cal.m=0;state.cal.y++;}state.cal.sel=null;renderCalendar();}
     else if(a==="cal-day"){var dy=parseInt(t.dataset.day,10);state.cal.sel=(state.cal.sel===dy?null:dy);renderCalendar();}
     else if(a==="install")doInstall();
+    else if(a==="test-sound"){var ss=$('select[name="sound"]');playSound(ss?ss.value:null);}
     else if(a==="pick-avatar"){state.avatarSlot=parseInt(t.dataset.slot,10)||1;avatarInput.click();}
     else if(a==="clear-avatars"){settings.avatar1=null;settings.avatar2=null;Store.saveKV("avatar1",null).then(function(){return Store.saveKV("avatar2",null);}).then(function(){renderSettings();}).catch(cloudFail);}
     else if(a==="auth-toggle"){state.authMode=(state.authMode==="up"?"in":"up");renderAuth();}
@@ -839,14 +872,15 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   document.addEventListener("submit",function(e){
     var sf=e.target.closest('[data-form="settings"]'),af=e.target.closest('[data-form="auth"]');
-    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";s.telegram=(el.telegram&&el.telegram.value)||"";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(function(err){showToast("Couldn’t save: "+((err&&err.message)||err));});return;}
+    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";s.telegram=(el.telegram&&el.telegram.value)||"";s.sound=(el.sound&&el.sound.value)||"twinkle";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(function(err){showToast("Couldn’t save: "+((err&&err.message)||err));});return;}
     if(af){e.preventDefault();doAuth(af);}
   });
 
   window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;var b=$("#install-btn");if(b)b.style.display="inline-flex";});
   window.addEventListener("appinstalled",function(){deferredPrompt=null;showToast("Installed 🎉");});
-  var _hiddenAt=0;
-  document.addEventListener("visibilitychange",function(){if(document.hidden){_hiddenAt=Date.now();}else if(session){if(Date.now()-_hiddenAt>30000)go("home");else render();}});
+  var pickAt=0;
+  document.addEventListener("click",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.type==="file")pickAt=Date.now();ensureAudio();},true);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden&&session){if(Date.now()-pickAt<120000)render();else go("home");}});
   window.addEventListener("focus",function(){if(session)render();});
 
   /* ---------- boot ---------- */
