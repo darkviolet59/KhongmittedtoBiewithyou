@@ -216,6 +216,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <input id="file-input" type="file" accept="image/*" multiple hidden>
 <input id="bg-input" type="file" accept="image/*" hidden>
 <input id="chat-photo-input" type="file" accept="image/*" hidden>
+<input id="chat-cam-input" type="file" accept="image/*" capture="environment" hidden>
 <input id="avatar-input" type="file" accept="image/*" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -258,7 +259,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
   var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null,noteSub:"notes",avatarSlot:1};
-  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input"),avatarInput=$("#avatar-input");
+  var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input"),chatCamInput=$("#chat-cam-input"),avatarInput=$("#avatar-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
   var lastPhotos=[], lastEvents=[], lastNotes=[], lastTodos=[], signedCache={};
 
@@ -381,10 +382,12 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var rows=(res.data||[]).map(mapPhoto);
       return signUrls(rows.map(function(r){return r.path;})).then(function(m){rows.forEach(function(r){r.url=m[r.path]||"";});lastPhotos=rows;return rows;});
     });},
-    uploadPhoto:function(blob,albumId,contentType,ext,taken,lat,lon,place){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
+    uploadPhoto:function(blob,albumId,contentType,ext,taken,lat,lon,place,fp){var id=uid(),path=id+"."+(ext||"jpg");var owner=(session&&session.user&&session.user.email)||null;
       return sb.storage.from(BUCKET).upload(path,blob,{contentType:contentType||"image/jpeg",upsert:true}).then(function(res){
         if(res.error)throw res.error;
-        return sb.from("photos").insert({id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null});
+        var row={id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null};
+        if(fp!==undefined&&fp!==null)row.fp=fp;
+        return sb.from("photos").insert(row);
       }).then(function(res){if(res.error)throw res.error;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
     deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg");
@@ -408,8 +411,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     addTodo:function(t){return sb.from("todos").insert({id:t.id,text:t.text,done:!!t.done,created_at:t.createdAt,owner_email:t.owner||null});},
     updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
     deleteTodo:function(id){return sb.from("todos").delete().eq("id",id);},
-    settings:function(){return sb.from("kv").select("value").eq("key","settings").maybeSingle().then(function(res){return res.data?res.data.value:null;});},
-    saveSettings:function(s){return sb.from("kv").upsert({key:"settings",value:s});}
+    settings:function(){return sb.from("kv").select("key,value").in("key",["settings","bgphoto","bgsrc","avatar1","avatar2"]).then(function(res){if(res.error)throw res.error;var o={};(res.data||[]).forEach(function(r){o[r.key]=r.value;});var s=o.settings||{};function pick(kk,fld){var v=o[kk]||s[fld]||null;if(v&&!o[kk])Store.saveKV(kk,v).catch(function(){});s[fld]=v;}pick("bgphoto","bgPhoto");pick("bgsrc","bgSrc");pick("avatar1","avatar1");pick("avatar2","avatar2");return s;});},
+    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram};return sb.from("kv").upsert({key:"settings",value:core}).then(function(res){if(res.error)throw res.error;return res;});},
+    saveKV:function(key,val){return sb.from("kv").upsert({key:key,value:(val==null?null:val)}).then(function(res){if(res.error)throw res.error;return res;});}
   };
 
   function findPhoto(id){for(var i=0;i<lastPhotos.length;i++)if(lastPhotos[i].id===id)return lastPhotos[i];return null;}
@@ -436,8 +440,31 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     return fb();
     function fb(){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var img=new Image();img.onload=function(){var w=img.width,h=img.height;if(Math.max(w,h)>maxDim){var s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}var c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);res(c.toDataURL("image/jpeg",q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
   }
-  function onAvatarUpload(){var f=avatarInput.files[0];if(!f)return;var slot=state.avatarSlot||1;showToast("Updating photo…");
-    resizeToDataUrl(f,240,0.85).then(function(url){settings["avatar"+slot]=url;return Store.saveSettings(settings);}).then(function(){showToast("Photo updated 💕");renderSettings();}).catch(function(){showToast("Couldn’t set that photo");}).then(function(){avatarInput.value="";});
+  function onAvatarUpload(){var f=avatarInput.files[0];if(!f)return;var slot=state.avatarSlot||1;showToast("Loading photo…");
+    resizeToDataUrl(f,600,0.85).then(function(url){openAvatarEditor(slot,url);}).catch(function(){showToast("Couldn’t load that photo");}).then(function(){avatarInput.value="";});
+  }
+  function drawAvatar(ctx,img,scale,cx,cy,S){ctx.clearRect(0,0,S,S);ctx.filter="blur("+(S*0.04)+"px)";drawCover(ctx,img,S,S);ctx.filter="none";var ar=img.width/img.height,dw,dh;if(ar>1){dh=S;dw=S*ar;}else{dw=S;dh=S/ar;}dw*=scale;dh*=scale;ctx.drawImage(img,cx*S-dw/2,cy*S-dh/2,dw,dh);}
+  function openAvatarEditor(slot,src){
+    var img=new Image();
+    img.onload=function(){
+      var scale=1,cx=0.5,cy=0.5;
+      var wrap=document.createElement("div");wrap.className="modal-overlay";
+      wrap.innerHTML='<div class="modal"><h3>Adjust photo 🖼️</h3><canvas id="av-ed" width="220" height="220" style="width:220px;height:220px;border-radius:50%;display:block;margin:0 auto;touch-action:none;background:#eee"></canvas><label style="margin-top:12px">Size<input id="av-scale" type="range" min="1" max="3" step="0.01" value="1"></label><p class="muted small" style="text-align:center;margin:2px 0">Drag to move it in the circle.</p><div class="modal-btns"><button class="ghost" data-c>Cancel</button><button class="primary" data-s>Save</button></div></div>';
+      $("#modal-root").appendChild(wrap);
+      var cv=wrap.querySelector("#av-ed"),c2=cv.getContext("2d");
+      function draw(){drawAvatar(c2,img,scale,cx,cy,220);}
+      draw();
+      wrap.querySelector("#av-scale").oninput=function(){scale=parseFloat(this.value);draw();};
+      var dragging=false,lx=0,ly=0;
+      function pt(e){var r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+      cv.addEventListener("pointerdown",function(e){dragging=true;var p=pt(e);lx=p.x;ly=p.y;});
+      cv.addEventListener("pointermove",function(e){if(!dragging)return;var p=pt(e);cx=Math.max(0,Math.min(1,cx+(p.x-lx)/220));cy=Math.max(0,Math.min(1,cy+(p.y-ly)/220));lx=p.x;ly=p.y;draw();});
+      cv.addEventListener("pointerup",function(){dragging=false;});cv.addEventListener("pointerleave",function(){dragging=false;});
+      function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
+      wrap.querySelector("[data-c]").onclick=close;wrap.onclick=function(e){if(e.target===wrap)close();};
+      wrap.querySelector("[data-s]").onclick=function(){var c=document.createElement("canvas");c.width=300;c.height=300;drawAvatar(c.getContext("2d"),img,scale,cx,cy,300);settings["avatar"+slot]=c.toDataURL("image/jpeg",0.85);close();showToast("Saving…");Store.saveKV("avatar"+slot,settings["avatar"+slot]).then(function(){showToast("Photo updated 💕");renderSettings();}).catch(function(e){showToast("Couldn’t save: "+((e&&e.message)||e));});};
+    };
+    img.src=src;
   }
   function pickBgPhoto(){bgInput.value="";bgInput.click();}
   function onBgUpload(){var f=bgInput.files[0];if(!f)return;showToast("Loading photo…");
@@ -465,7 +492,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       cv.addEventListener("pointerup",function(){dragging=false;});cv.addEventListener("pointerleave",function(){dragging=false;});
       function close(){if(wrap.parentNode)wrap.parentNode.removeChild(wrap);}
       wrap.querySelector("[data-c]").onclick=close;wrap.onclick=function(e){if(e.target===wrap)close();};
-      wrap.querySelector("[data-s]").onclick=function(){settings.bgScale=scale;settings.bgX=cx;settings.bgY=cy;settings.bg="photo";settings.bgPhoto=compositeBg(img,scale,cx,cy,800,1600);applyBackground();close();showToast("Saving…");Store.saveSettings(settings).then(function(){showToast("Background saved 🎨");}).catch(function(){showToast("Couldn’t save — try a smaller photo");});};
+      wrap.querySelector("[data-s]").onclick=function(){settings.bgScale=scale;settings.bgX=cx;settings.bgY=cy;settings.bg="photo";settings.bgPhoto=compositeBg(img,scale,cx,cy,800,1600);applyBackground();close();showToast("Saving…");Store.saveKV("bgphoto",settings.bgPhoto).then(function(){return Store.saveKV("bgsrc",settings.bgSrc);}).then(function(){return Store.saveSettings(settings);}).then(function(){showToast("Background saved 🎨");}).catch(function(e){showToast("Couldn’t save: "+((e&&e.message)||e));});};
     };
     img.src=settings.bgSrc;
   }
@@ -489,7 +516,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     pbtn.appendChild(pprev);pbtn.appendChild(plbl);pbtn.onclick=function(){close();pickBgPhoto();};grid.appendChild(pbtn);
     modal.appendChild(grid);
     if(settings.bgSrc){var adj=document.createElement("button");adj.className="ghost";adj.textContent="Adjust photo 🖼️";adj.onclick=function(){close();openBgEditor();};modal.appendChild(adj);}
-    if(settings.bgPhoto){var rm=document.createElement("button");rm.className="danger-link";rm.textContent="Remove my photo";rm.onclick=function(){settings.bgPhoto=null;settings.bgSrc=null;if(settings.bg==="photo")settings.bg="hearts";saveAndApplyBg();close();};modal.appendChild(rm);}
+    if(settings.bgPhoto){var rm=document.createElement("button");rm.className="danger-link";rm.textContent="Remove my photo";rm.onclick=function(){settings.bgPhoto=null;settings.bgSrc=null;if(settings.bg==="photo")settings.bg="hearts";applyBackground();Store.saveKV("bgphoto",null).then(function(){return Store.saveKV("bgsrc",null);}).then(function(){return Store.saveSettings(settings);}).catch(function(){});close();};modal.appendChild(rm);}
     var bar=document.createElement("div");bar.className="modal-btns";
     var cb=document.createElement("button");cb.className="ghost";cb.textContent="Close";cb.onclick=function(){close();};bar.appendChild(cb);modal.appendChild(bar);
     wrap.appendChild(modal);$("#modal-root").appendChild(wrap);
@@ -617,7 +644,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   function renderChat(){
     view.innerHTML='<div class="chat-note">🕊️ Messages &amp; photos here are deleted after 30 days</div><div id="chat-list" class="chat-list"><div class="empty">Loading 💫</div></div>'+
-      '<div class="chat-bar"><button class="chat-attach" data-action="chat-photo" aria-label="Send photo">🖼️</button><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
+      '<div class="chat-bar"><button class="chat-attach" data-action="chat-camera" aria-label="Take photo">📷</button><button class="chat-attach" data-action="chat-photo" aria-label="Send photo">🖼️</button><input id="chat-input" placeholder="Message…" autocomplete="off"><button class="chat-send" data-action="send-chat" aria-label="Send">➤</button></div>';
     setFab(false);
     var inp=$("#chat-input");if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();sendChat();}});
     loadChat();
@@ -633,9 +660,11 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function sendChat(){var inp=$("#chat-input");if(!inp)return;var text=(inp.value||"").trim();if(!text)return;inp.value="";
     Store.addMessage({id:uid(),text:text,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null}).then(loadChat).catch(function(){showToast("Message didn’t send");inp.value=text;});
   }
-  function onChatPhoto(){var f=chatPhotoInput.files[0];if(!f)return;showToast("Sending photo…");
-    resizeToDataUrl(f,900,0.55).then(function(url){return Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null});}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");}).then(function(){chatPhotoInput.value="";});
+  function chatPhotoFrom(inp){var f=inp.files[0];if(!f)return;showToast("Sending photo…");
+    resizeToDataUrl(f,900,0.55).then(function(url){return Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null});}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");}).then(function(){inp.value="";});
   }
+  function onChatPhoto(){chatPhotoFrom(chatPhotoInput);}
+  function onChatCam(){chatPhotoFrom(chatCamInput);}
   function openImage(src){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'">';viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);}
   function openChatImage(src,mid){viewer.innerHTML='<button class="viewer-close" data-action="close-viewer">✕</button><img src="'+src+'"><div class="viewer-bar"><button class="danger" data-action="del-chat-photo" data-id="'+mid+'">🗑️ Delete</button></div>';viewer.classList.add("open");var z=viewer.querySelector("img");if(z)enableZoom(z);}
   function renderSettings(){
@@ -698,11 +727,30 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   /* ---------- uploads ---------- */
   function onUpload(){
-    var files=Array.prototype.slice.call(fileInput.files);if(!files.length)return;
-    var alb=state.uploadAlbumId||null;showToast("Uploading…");
-    var chain=Promise.resolve();
-    files.forEach(function(f){if(!f.type||f.type.indexOf("image/")!==0)return;chain=chain.then(function(){return readExifData(f);}).then(function(meta){var taken=meta.date||f.lastModified||Date.now();return (meta.lat!=null?reverseGeocodeSafe(meta.lat,meta.lon):Promise.resolve("")).then(function(place){return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,place);});});});});
-    chain.then(function(){fileInput.value="";return refresh();}).then(function(){showToast("Added 💕");}).catch(function(){showToast("Upload failed — check your connection");});
+    var files=Array.prototype.slice.call(fileInput.files).filter(function(f){return f.type&&f.type.indexOf("image/")===0;});
+    fileInput.value="";
+    if(!files.length)return;
+    var alb=state.uploadAlbumId||null,total=files.length,done=0,skipped=0;
+    showToast("Preparing "+total+" photo"+(total>1?"s":"")+"…");
+    sb.from("photos").select("fp").then(function(res){
+      var hasFp=!res.error,seen={};
+      if(hasFp)(res.data||[]).forEach(function(r){if(r.fp)seen[r.fp]=1;});
+      var chain=Promise.resolve();
+      files.forEach(function(f){chain=chain.then(function(){
+        var fp=hasFp?(f.size+"-"+(f.lastModified||0)):undefined;
+        if(hasFp&&seen[fp]){skipped++;done++;showToast("Uploading "+done+"/"+total+"…");return;}
+        if(hasFp)seen[fp]=1;
+        return readExifData(f).then(function(meta){var taken=meta.date||f.lastModified||Date.now();
+          return (meta.lat!=null?reverseGeocodeSafe(meta.lat,meta.lon):Promise.resolve("")).then(function(place){
+            return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,place,fp);});
+          });
+        }).then(function(){done++;showToast("Uploading "+done+"/"+total+"…");});
+      });});
+      return chain;
+    }).then(function(){return refresh();}).then(function(){
+      var added=total-skipped;
+      showToast(added>0?("Added "+added+(skipped?" · "+skipped+" already there":"")+" 💕"):(skipped+" already uploaded ✓"));
+    }).catch(function(){showToast("Upload failed — check your connection");});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
 
@@ -776,6 +824,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="del-todo")Store.deleteTodo(id).then(function(){return renderTodoList();}).catch(cloudFail);
     else if(a==="send-chat")sendChat();
     else if(a==="chat-photo")chatPhotoInput.click();
+    else if(a==="chat-camera")chatCamInput.click();
     else if(a==="view-chat-img")openChatImage(t.getAttribute("src"),id);
     else if(a==="del-chat-photo")confirmModal("Delete this photo from the chat?").then(function(ok){if(ok)Store.deleteMessage(id).then(function(){closeViewer();loadChat();}).catch(cloudFail);});
     else if(a==="cal-prev"){state.cal.m--;if(state.cal.m<0){state.cal.m=11;state.cal.y--;}state.cal.sel=null;renderCalendar();}
@@ -783,14 +832,14 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="cal-day"){var dy=parseInt(t.dataset.day,10);state.cal.sel=(state.cal.sel===dy?null:dy);renderCalendar();}
     else if(a==="install")doInstall();
     else if(a==="pick-avatar"){state.avatarSlot=parseInt(t.dataset.slot,10)||1;avatarInput.click();}
-    else if(a==="clear-avatars"){settings.avatar1=null;settings.avatar2=null;Store.saveSettings(settings).then(function(){renderSettings();}).catch(cloudFail);}
+    else if(a==="clear-avatars"){settings.avatar1=null;settings.avatar2=null;Store.saveKV("avatar1",null).then(function(){return Store.saveKV("avatar2",null);}).then(function(){renderSettings();}).catch(cloudFail);}
     else if(a==="auth-toggle"){state.authMode=(state.authMode==="up"?"in":"up");renderAuth();}
     else if(a==="signout"){sb.auth.signOut();}
   });
 
   document.addEventListener("submit",function(e){
     var sf=e.target.closest('[data-form="settings"]'),af=e.target.closest('[data-form="auth"]');
-    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";s.telegram=(el.telegram&&el.telegram.value)||"";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(cloudFail);return;}
+    if(sf){e.preventDefault();var el=sf.elements,s=Object.assign({},settings);s.name1=el.name1.value||"You";s.name2=el.name2.value||"Me";s.emoji1=el.emoji1.value||"🐻";s.emoji2=el.emoji2.value||"🐰";s.anniversary=el.anniversary.value||"";s.theme=el.theme.value||"pink";s.telegram=(el.telegram&&el.telegram.value)||"";settings=s;Store.saveSettings(s).then(function(){applyTheme();showToast("Saved 💾");renderSettings();}).catch(function(err){showToast("Couldn’t save: "+((err&&err.message)||err));});return;}
     if(af){e.preventDefault();doAuth(af);}
   });
 
@@ -811,6 +860,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     $("#bg-btn").addEventListener("click",openBackgroundPicker);
     bgInput.addEventListener("change",onBgUpload);
     chatPhotoInput.addEventListener("change",onChatPhoto);
+    chatCamInput.addEventListener("change",onChatCam);
     avatarInput.addEventListener("change",onAvatarUpload);
     sb.auth.getSession().then(function(res){session=res.data.session;if(session)startApp();else showLogin();});
     sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_IN"&&s){startApp();}else if(evt==="SIGNED_OUT"){showLogin();}});
