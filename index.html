@@ -243,7 +243,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   // Cloudflare R2 photo storage (via your Worker). Leave "" to keep photos in Supabase.
   var R2_WORKER = "https://khongmittedtobiewithyou.debbielim-59.workers.dev";
   // Google Drive auto-backup — paste your Google OAuth Client ID here (see the guide). Leave "" to disable.
-  var GOOGLE_CLIENT_ID = "";
+  var GOOGLE_CLIENT_ID = "440952716817-299do1m013bu14kkt8tutl7084p1vesq.apps.googleusercontent.com";
   /* ===================================================================== */
 
   var $=function(s,r){return (r||document).querySelector(s);};
@@ -563,15 +563,15 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function cloudFail(){showToast("Couldn’t reach the cloud — check your connection");}
 
   function renderHome(){
+    var days=settings.anniversary?daysSince(settings.anniversary):null;
+    view.innerHTML='<section class="couple-card">'+
+      '<div class="ch-top"><div class="ch-person"><span class="ch-name">'+esc(settings.name1)+'</span>'+avatarBig(1)+'</div><div class="ch-heart2">💗</div><div class="ch-person"><span class="ch-name">'+esc(settings.name2)+'</span>'+avatarBig(2)+'</div></div>'+
+      (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+
+      '</section><div id="home-notes"></div>';
+    setFab(false);
     return Store.notes().catch(function(){return [];}).then(function(notes){
       var pinned=notes.filter(function(n){return n.pinned;}).sort(function(a,b){return b.createdAt-a.createdAt;});
-      var days=settings.anniversary?daysSince(settings.anniversary):null;
-      view.innerHTML='<section class="couple-card">'+
-        '<div class="ch-top"><div class="ch-person"><span class="ch-name">'+esc(settings.name1)+'</span>'+avatarBig(1)+'</div><div class="ch-heart2">💗</div><div class="ch-person"><span class="ch-name">'+esc(settings.name2)+'</span>'+avatarBig(2)+'</div></div>'+
-        (days!=null?'<div class="counter">Together for <b>'+days+'</b> days 💞</div>':'<div class="counter">Set your anniversary in Settings ⚙️</div>')+
-        '</section>'+
-        (pinned.length?'<div class="notes-list">'+pinned.map(noteHtml).join("")+'</div>':'');
-      setFab(false);
+      var el=$("#home-notes");if(el)el.innerHTML=pinned.length?'<div class="notes-list">'+pinned.map(noteHtml).join("")+'</div>':'';
     });
   }
 
@@ -724,7 +724,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v5</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -890,8 +890,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     sb.from("messages").delete().lt("created_at",cutoff).catch(function(){});
   }
   function startApp(){document.body.classList.remove("logged-out");ensureRealtime();purgeOld();
-    Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();go("home");})
-      .catch(function(){settings=Object.assign({},DEFAULT_SETTINGS);applyTheme();applyBackground();go("home");});
+    applyTheme();applyBackground();go("home");
+    Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();render();})
+      .catch(function(){applyTheme();applyBackground();render();});
   }
   function showLogin(){session=null;setFab(false);state.authMode="in";renderAuth();}
   function ensureRealtime(){if(realtimeStarted)return;realtimeStarted=true;
