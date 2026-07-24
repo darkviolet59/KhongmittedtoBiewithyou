@@ -224,6 +224,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <input id="chat-cam-input" type="file" accept="image/*" capture="environment" hidden>
 <input id="avatar-input" type="file" accept="image/*" hidden>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
@@ -241,6 +242,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var SUPABASE_ANON_KEY = "sb_publishable_EXtkLx6pH7xavaSL78hFMQ_aw-mCl6M";
   // Cloudflare R2 photo storage (via your Worker). Leave "" to keep photos in Supabase.
   var R2_WORKER = "https://khongmittedtobiewithyou.debbielim-59.workers.dev";
+  // Google Drive auto-backup — paste your Google OAuth Client ID here (see the guide). Leave "" to disable.
+  var GOOGLE_CLIENT_ID = "";
   /* ===================================================================== */
 
   var $=function(s,r){return (r||document).querySelector(s);};
@@ -373,7 +376,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
      events and settings live in their own tables. This is the only place
      that knows about the cloud — the rest of the app just calls Store.*.
      ===================================================================== */
-  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",store:r.store||"supabase",url:""};}
+  function mapPhoto(r){return {id:r.id,caption:r.caption||"",albumId:r.album_id||null,createdAt:Number(r.created_at)||0,takenAt:r.taken_at?Number(r.taken_at):(Number(r.created_at)||0),path:r.path,owner:r.owner_email||"",lat:(r.lat==null?null:Number(r.lat)),lon:(r.lon==null?null:Number(r.lon)),place:r.place||"",store:r.store||"supabase",driveId:r.drive_id||"",url:""};}
   function mapAlbum(r){return {id:r.id,name:r.name,createdAt:Number(r.created_at)||0,coverId:r.cover_id||""};}
   function mapEvent(r){return {id:r.id,title:r.title,date:r.date,emoji:r.emoji,repeat:r.repeat,createdAt:Number(r.created_at)||0};}
   function mapNote(r){return {id:r.id,title:r.title||"",text:r.text||"",date:r.note_date||"",pinned:!!r.pinned,createdAt:Number(r.created_at)||0,owner:r.owner_email||""};}
@@ -405,6 +408,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
         return sb.from("photos").insert(row);
       }).then(function(res){if(res.error)throw res.error;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
+    setDriveId:function(id,fid){return sb.from("photos").update({drive_id:fid}).eq("id",id);},
     deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg"),store=p?p.store:"supabase",token=(session&&session.access_token)||"";
       var del=(store==="r2")?fetch(R2_WORKER+"/delete?key="+encodeURIComponent(path),{method:"POST",headers:{"X-Token":token}}).catch(function(){}):sb.storage.from(BUCKET).remove([path]).catch(function(){});
       return del.then(function(){return sb.from("photos").delete().eq("id",id);});},
@@ -428,13 +432,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
     deleteTodo:function(id){return sb.from("todos").delete().eq("id",id);},
     settings:function(){return sb.from("kv").select("key,value").in("key",["settings","bgphoto","bgsrc","avatar1","avatar2"]).then(function(res){if(res.error)throw res.error;var o={};(res.data||[]).forEach(function(r){o[r.key]=r.value;});var s=o.settings||{};function pick(kk,fld){var v=o[kk]||s[fld]||null;if(v&&!o[kk])Store.saveKV(kk,v).catch(function(){});s[fld]=v;}pick("bgphoto","bgPhoto");pick("bgsrc","bgSrc");pick("avatar1","avatar1");pick("avatar2","avatar2");return s;});},
-    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram,sound:s.sound};return sb.from("kv").upsert({key:"settings",value:core},{onConflict:"key"}).then(function(res){if(res.error)throw res.error;return res;});},
+    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram,sound:s.sound};return sb.from("kv").upsert({key:"settings",value:core},{onConflict:"key"}).then(function(res){if(res.error)throw res.error;return sb.from("kv").select("value").eq("key","settings").maybeSingle();}).then(function(res){if(res.error)throw res.error;if(!res.data)throw new Error("kv table isn’t saving — run the kv setup SQL");return res;});},
     saveKV:function(key,val){return sb.from("kv").upsert({key:key,value:(val==null?null:val)},{onConflict:"key"}).then(function(res){if(res.error)throw res.error;return res;});}
   };
 
   function findPhoto(id){for(var i=0;i<lastPhotos.length;i++)if(lastPhotos[i].id===id)return lastPhotos[i];return null;}
-  function getStorageUsage(){return sb.storage.from(BUCKET).list("",{limit:1000}).then(function(res){if(res.error)throw res.error;var total=0;(res.data||[]).forEach(function(f){if(f.metadata&&f.metadata.size)total+=f.metadata.size;});return total;});}
-  function updateStorageUsage(){var el=$("#storage-usage");if(!el)return;getStorageUsage().then(function(bytes){var mb=bytes/1048576,limitMB=1024,pct=Math.min(100,Math.round(mb/limitMB*1000)/10);el.innerHTML='<div class="usage-row"><span>'+mb.toFixed(1)+' MB</span><span class="muted">of 1 GB used</span></div><div class="usage-bar"><span style="width:'+pct+'%"></span></div>';}).catch(function(){el.innerHTML='<p class="muted small">Couldn’t check storage right now.</p>';});}
+  function getStorageUsage(){
+    if(R2_WORKER&&R2_WORKER.indexOf("http")===0){return fetch(R2_WORKER+"/usage").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}).then(function(j){return {bytes:(j&&j.bytes)||0,count:(j&&j.count)||0,limitGB:10,unknown:!j};});}
+    return sb.storage.from(BUCKET).list("",{limit:1000}).then(function(res){var total=0,rows=res.data||[];rows.forEach(function(f){if(f.metadata&&f.metadata.size)total+=f.metadata.size;});return {bytes:total,count:rows.length,limitGB:1};});
+  }
+  function updateStorageUsage(){var el=$("#storage-usage");if(!el)return;getStorageUsage().then(function(u){var mb=u.bytes/1048576,gb=mb/1024,limitGB=u.limitGB||10,pct=u.unknown?0:Math.min(100,Math.round(gb/limitGB*1000)/10);var used=u.unknown?"—":((gb>=1)?gb.toFixed(2)+" GB":mb.toFixed(1)+" MB");el.innerHTML='<div class="usage-row"><span>'+used+'</span><span class="muted">of '+limitGB+' GB'+(u.count?" · "+u.count+" photos":"")+'</span></div><div class="usage-bar"><span style="width:'+pct+'%"></span></div>'+(u.unknown?'<p class="muted small" style="margin-top:6px">Update your Cloudflare Worker to see exact usage.</p>':'');}).catch(function(){el.innerHTML='<p class="muted small">Couldn’t check storage right now.</p>';});}
 
   /* ---------- theme / chrome ---------- */
   function applyTheme(){var c=THEMES[settings.theme]||THEMES.pink;document.documentElement.style.setProperty("--accent",c);var m=$('meta[name="theme-color"]');if(m)m.setAttribute("content",c);var h=$("#header-title");if(h)h.textContent=(settings.name1||"Us")+" & "+(settings.name2||"");}
@@ -717,7 +724,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Download all your photos in one file at original quality — then save it to whichever Google Drive (or cloud) you like. You choose where. Each photo is named with the date it was taken.</p><button class="ghost" data-action="backup-all">☁️ Back up all photos</button></div>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -744,6 +751,46 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var p=photos[i++];fetch(p.url).then(function(r){return r.arrayBuffer();}).then(function(ab){files.push({name:dstamp(photoDate(p))+"_"+p.id+"."+extOf(p),data:new Uint8Array(ab)});showToast("Preparing "+i+"/"+photos.length+"…");next();}).catch(function(){next();});})();}
   function downloadAlbum(albumId){Store.albums().then(function(als){var al=als.filter(function(x){return x.id===albumId;})[0];var nm=(al?al.name:"album").replace(/[^\w\- ]/g,"")||"album";return Store.photos().then(function(all){zipPhotos(all.filter(function(p){return p.albumId===albumId;}).sort(function(a,b){return photoDate(b)-photoDate(a);}),nm+".zip");});}).catch(function(){showToast("Couldn’t download");});}
   function downloadAll(){Store.photos().then(function(all){zipPhotos(all.slice().sort(function(a,b){return photoDate(b)-photoDate(a);}),"Us-all-photos.zip");}).catch(function(){showToast("Couldn’t download");});}
+  /* ---------- Google Drive auto-backup ---------- */
+  var gToken=null,gTokenClient=null;
+  function gReady(){return typeof google!=="undefined"&&google.accounts&&google.accounts.oauth2;}
+  function backupToDrive(){
+    if(!GOOGLE_CLIENT_ID){showToast("Add your Google Client ID first (see the guide)");return;}
+    if(!gReady()){showToast("Google isn’t loaded yet — reopen the app and try again");return;}
+    if(!gTokenClient){gTokenClient=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.file",callback:function(resp){if(resp&&resp.access_token){gToken=resp.access_token;gRunBackup();}else{showToast("Google sign-in cancelled");}}});}
+    gTokenClient.requestAccessToken();
+  }
+  function gFolder(){
+    var q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='Us Photos' and trashed=false");
+    return fetch("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id)&q="+q,{headers:{Authorization:"Bearer "+gToken}}).then(function(r){return r.json();}).then(function(j){
+      if(j.files&&j.files.length)return j.files[0].id;
+      return fetch("https://www.googleapis.com/drive/v3/files",{method:"POST",headers:{Authorization:"Bearer "+gToken,"Content-Type":"application/json"},body:JSON.stringify({name:"Us Photos",mimeType:"application/vnd.google-apps.folder"})}).then(function(r){return r.json();}).then(function(j2){return j2.id;});
+    });
+  }
+  function gUpload(folderId,name,blob){
+    return blob.arrayBuffer().then(function(ab){
+      var b="us"+Math.random().toString(36).slice(2);
+      var pre="--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify({name:name,parents:[folderId]})+"\r\n--"+b+"\r\nContent-Type: "+(blob.type||"image/jpeg")+"\r\n\r\n";
+      var body=new Blob([pre,new Uint8Array(ab),"\r\n--"+b+"--"],{type:"multipart/related; boundary="+b});
+      return fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",{method:"POST",headers:{Authorization:"Bearer "+gToken,"Content-Type":"multipart/related; boundary="+b},body:body}).then(function(r){return r.json();}).then(function(j){return j.id;});
+    });
+  }
+  function gRunBackup(){
+    showToast("Opening Drive…");
+    gFolder().then(function(fid){
+      if(!fid){showToast("Couldn’t open Drive folder");return;}
+      return Store.photos().then(function(all){
+        var todo=all.filter(function(p){return !p.driveId;});
+        if(!todo.length){showToast("Everything's already backed up ☁️");return;}
+        var i=0,done=0;
+        (function next(){
+          if(i>=todo.length){showToast("Backed up "+done+" photo"+(done===1?"":"s")+" to Drive ☁️");return;}
+          var p=todo[i++];
+          fetch(p.url).then(function(r){return r.blob();}).then(function(blob){return gUpload(fid,dstamp(photoDate(p))+"_"+p.id+"."+extOf(p),blob);}).then(function(fileId){if(fileId)return Store.setDriveId(p.id,fileId).then(function(){done++;});}).catch(function(){}).then(function(){showToast("Backing up "+i+"/"+todo.length+"…");next();});
+        })();
+      });
+    }).catch(function(){showToast("Drive backup failed — try again");});
+  }
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
     viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button data-action="download-photo" data-id="'+id+'">⬇️ Save</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
     viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);
@@ -864,6 +911,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="download-photo")downloadPhoto(findPhoto(id));
     else if(a==="download-album")downloadAlbum(id);
     else if(a==="backup-all")downloadAll();
+    else if(a==="backup-drive")backupToDrive();
     else if(a==="caption"){var p=findPhoto(id);if(p)modalForm({title:"Caption 💬",fields:[{name:"caption",label:"Write something",value:p.caption}],okText:"Save"}).then(function(r){if(r){p.caption=r.caption;Store.updatePhoto(p).then(function(){openPhoto(id);}).catch(cloudFail);}});}
     else if(a==="album-pick"){var ph=findPhoto(id);if(ph)Store.albums().then(function(albums){var opts=[{value:"",label:"— No album —"}].concat(albums.map(function(al){return {value:al.id,label:al.name};}));modalForm({title:"Move to album 📁",fields:[{name:"albumId",label:"Album",type:"select",value:ph.albumId||"",options:opts}],okText:"Move"}).then(function(r){if(r){ph.albumId=r.albumId||null;Store.updatePhoto(ph).then(function(){showToast("Moved 📁");refresh();}).catch(cloudFail);}});});}
     else if(a==="create-album")modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create"}).then(function(r){if(r&&r.name.trim())Store.addAlbum({id:uid(),name:r.name.trim(),createdAt:Date.now()}).then(renderPhotos).catch(cloudFail);});

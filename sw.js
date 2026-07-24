@@ -1,6 +1,8 @@
-/* Service worker: makes the app installable and lets the shell open offline.
-   Bump CACHE (v2 -> v3 ...) whenever you change index.html so phones pick up the update. */
-var CACHE = "us-app-v2";
+/* Service worker: makes the app installable and work offline.
+   Strategy: the page itself is fetched fresh from the network when online (so your
+   edits show up right away), and falls back to the saved copy only when offline.
+   Icons/manifest are served from cache for speed. */
+var CACHE = "us-app-v4";
 var ASSETS = [
   "./",
   "./index.html",
@@ -26,11 +28,23 @@ self.addEventListener("activate", function (e) {
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   var url = new URL(e.request.url);
-  // Only cache our own files. Let Supabase (photos/data) and the library CDN go straight to network.
+  // Supabase (photos/data) and the library CDN go straight to the network.
   if (url.origin !== self.location.origin) return;
-  e.respondWith(
-    caches.match(e.request).then(function (cached) {
-      return cached || fetch(e.request).catch(function () { return caches.match("./index.html"); });
-    })
-  );
+
+  var isPage = e.request.mode === "navigate" || url.pathname === "/" || url.pathname.slice(-1) === "/" || url.pathname.indexOf("index.html") !== -1;
+  if (isPage) {
+    // Network-first: always try to get the latest page, fall back to cache when offline.
+    e.respondWith(
+      fetch(e.request).then(function (res) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        return res;
+      }).catch(function () {
+        return caches.match(e.request).then(function (c) { return c || caches.match("./index.html"); });
+      })
+    );
+    return;
+  }
+  // Everything else (icons, manifest): cache-first for speed.
+  e.respondWith(caches.match(e.request).then(function (c) { return c || fetch(e.request); }));
 });
