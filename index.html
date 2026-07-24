@@ -428,8 +428,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     updateTodo:function(t){return sb.from("todos").update({done:!!t.done,text:t.text}).eq("id",t.id);},
     deleteTodo:function(id){return sb.from("todos").delete().eq("id",id);},
     settings:function(){return sb.from("kv").select("key,value").in("key",["settings","bgphoto","bgsrc","avatar1","avatar2"]).then(function(res){if(res.error)throw res.error;var o={};(res.data||[]).forEach(function(r){o[r.key]=r.value;});var s=o.settings||{};function pick(kk,fld){var v=o[kk]||s[fld]||null;if(v&&!o[kk])Store.saveKV(kk,v).catch(function(){});s[fld]=v;}pick("bgphoto","bgPhoto");pick("bgsrc","bgSrc");pick("avatar1","avatar1");pick("avatar2","avatar2");return s;});},
-    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram,sound:s.sound};return sb.from("kv").upsert({key:"settings",value:core}).then(function(res){if(res.error)throw res.error;return res;});},
-    saveKV:function(key,val){return sb.from("kv").upsert({key:key,value:(val==null?null:val)}).then(function(res){if(res.error)throw res.error;return res;});}
+    saveSettings:function(s){var core={name1:s.name1,name2:s.name2,emoji1:s.emoji1,emoji2:s.emoji2,anniversary:s.anniversary,theme:s.theme,bg:s.bg,bgScale:s.bgScale,bgX:s.bgX,bgY:s.bgY,telegram:s.telegram,sound:s.sound};return sb.from("kv").upsert({key:"settings",value:core},{onConflict:"key"}).then(function(res){if(res.error)throw res.error;return res;});},
+    saveKV:function(key,val){return sb.from("kv").upsert({key:key,value:(val==null?null:val)},{onConflict:"key"}).then(function(res){if(res.error)throw res.error;return res;});}
   };
 
   function findPhoto(id){for(var i=0;i<lastPhotos.length;i++)if(lastPhotos[i].id===id)return lastPhotos[i];return null;}
@@ -606,7 +606,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var album=r[0].filter(function(a){return a.id===id;})[0];
       if(!album){state.album=null;return renderAlbums();}
       var photos=r[1].filter(function(p){return p.albumId===id;}).sort(function(a,b){return b.createdAt-a.createdAt;});
-      $("#subview").innerHTML='<div class="album-head"><button class="back" data-action="back-albums">‹ Albums</button><h2>'+esc(album.name)+'</h2><span style="display:flex;gap:10px"><button class="link" data-action="rename-album" data-id="'+id+'">Rename</button><button class="danger-link" data-action="delete-album" data-id="'+id+'">Delete</button></span></div><div class="cover-hint">Tap a photo, then ⭐ to make it the album cover.</div>'+
+      $("#subview").innerHTML='<div class="album-head"><button class="back" data-action="back-albums">‹ Albums</button><h2>'+esc(album.name)+'</h2><span style="display:flex;gap:10px"><button class="link" data-action="download-album" data-id="'+id+'">⬇️ Save</button><button class="link" data-action="rename-album" data-id="'+id+'">Rename</button><button class="danger-link" data-action="delete-album" data-id="'+id+'">Delete</button></span></div><div class="cover-hint">Tap a photo, then ⭐ to make it the album cover.</div>'+
         (photos.length?'<div class="grid">'+photos.map(cellHtml).join("")+'</div>':'<div class="empty big">📸<br>This album is empty<span>Tap the + button to add photos here</span></div>');
       setFab(true,id);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
@@ -717,15 +717,35 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Download all your photos in one file at original quality — then save it to whichever Google Drive (or cloud) you like. You choose where. Each photo is named with the date it was taken.</p><button class="ghost" data-action="backup-all">☁️ Back up all photos</button></div>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
   }
 
   /* ---------- viewer ---------- */
+  var CRC_TABLE=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+  function crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++)c=CRC_TABLE[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+  function makeZip(files){var enc=new TextEncoder(),chunks=[],central=[],offset=0;
+    files.forEach(function(f){var nb=enc.encode(f.name),crc=crc32(f.data),size=f.data.length;
+      var lh=new DataView(new ArrayBuffer(30));lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(12,0x21,true);lh.setUint32(14,crc,true);lh.setUint32(18,size,true);lh.setUint32(22,size,true);lh.setUint16(26,nb.length,true);
+      chunks.push(new Uint8Array(lh.buffer));chunks.push(nb);chunks.push(f.data);
+      var ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(12,0x21,true);ch.setUint32(16,crc,true);ch.setUint32(20,size,true);ch.setUint32(24,size,true);ch.setUint16(28,nb.length,true);ch.setUint32(42,offset,true);
+      central.push({h:new Uint8Array(ch.buffer),n:nb});offset+=30+nb.length+size;});
+    var cdStart=offset;central.forEach(function(c){chunks.push(c.h);chunks.push(c.n);offset+=46+c.n.length;});
+    var eocd=new DataView(new ArrayBuffer(22));eocd.setUint32(0,0x06054b50,true);eocd.setUint16(8,files.length,true);eocd.setUint16(10,files.length,true);eocd.setUint32(12,offset-cdStart,true);eocd.setUint32(16,cdStart,true);
+    chunks.push(new Uint8Array(eocd.buffer));return new Blob(chunks,{type:"application/zip"});}
+  function downloadBlob(blob,name){var u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},2000);}
+  function dstamp(ts){var d=new Date(Number(ts)||Date.now());return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function extOf(p){return (p.path&&p.path.indexOf(".")>=0)?p.path.split(".").pop():"jpg";}
+  function downloadPhoto(p){if(!p)return;showToast("Preparing download…");fetch(p.url).then(function(r){return r.blob();}).then(function(b){downloadBlob(b,"Us_"+dstamp(photoDate(p))+"_"+p.id+"."+extOf(p));showToast("Saved 💾");}).catch(function(){showToast("Couldn’t download");});}
+  function zipPhotos(photos,zipName){if(!photos.length){showToast("Nothing to download");return;}showToast("Preparing "+photos.length+" photos…");var files=[],i=0;
+    (function next(){if(i>=photos.length){if(!files.length){showToast("Couldn’t download");return;}downloadBlob(makeZip(files),zipName);showToast("Downloaded 💾");return;}
+      var p=photos[i++];fetch(p.url).then(function(r){return r.arrayBuffer();}).then(function(ab){files.push({name:dstamp(photoDate(p))+"_"+p.id+"."+extOf(p),data:new Uint8Array(ab)});showToast("Preparing "+i+"/"+photos.length+"…");next();}).catch(function(){next();});})();}
+  function downloadAlbum(albumId){Store.albums().then(function(als){var al=als.filter(function(x){return x.id===albumId;})[0];var nm=(al?al.name:"album").replace(/[^\w\- ]/g,"")||"album";return Store.photos().then(function(all){zipPhotos(all.filter(function(p){return p.albumId===albumId;}).sort(function(a,b){return photoDate(b)-photoDate(a);}),nm+".zip");});}).catch(function(){showToast("Couldn’t download");});}
+  function downloadAll(){Store.photos().then(function(all){zipPhotos(all.slice().sort(function(a,b){return photoDate(b)-photoDate(a);}),"Us-all-photos.zip");}).catch(function(){showToast("Couldn’t download");});}
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
-    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button data-action="download-photo" data-id="'+id+'">⬇️ Save</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
     viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);
   }
   function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";}
@@ -841,6 +861,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     if(a==="open-photo")openPhoto(id);
     else if(a==="close-viewer")closeViewer();
     else if(a==="delete-photo")confirmModal("Delete this photo?").then(function(ok){if(ok)Store.deletePhoto(id).then(function(){closeViewer();refresh();}).catch(cloudFail);});
+    else if(a==="download-photo")downloadPhoto(findPhoto(id));
+    else if(a==="download-album")downloadAlbum(id);
+    else if(a==="backup-all")downloadAll();
     else if(a==="caption"){var p=findPhoto(id);if(p)modalForm({title:"Caption 💬",fields:[{name:"caption",label:"Write something",value:p.caption}],okText:"Save"}).then(function(r){if(r){p.caption=r.caption;Store.updatePhoto(p).then(function(){openPhoto(id);}).catch(cloudFail);}});}
     else if(a==="album-pick"){var ph=findPhoto(id);if(ph)Store.albums().then(function(albums){var opts=[{value:"",label:"— No album —"}].concat(albums.map(function(al){return {value:al.id,label:al.name};}));modalForm({title:"Move to album 📁",fields:[{name:"albumId",label:"Album",type:"select",value:ph.albumId||"",options:opts}],okText:"Move"}).then(function(r){if(r){ph.albumId=r.albumId||null;Store.updatePhoto(ph).then(function(){showToast("Moved 📁");refresh();}).catch(cloudFail);}});});}
     else if(a==="create-album")modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create"}).then(function(r){if(r&&r.name.trim())Store.addAlbum({id:uid(),name:r.name.trim(),createdAt:Date.now()}).then(renderPhotos).catch(cloudFail);});
