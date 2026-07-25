@@ -724,7 +724,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v5</p>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v5</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -889,6 +889,21 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function purgeOld(){var cutoff=Date.now()-30*86400000;
     sb.from("messages").delete().lt("created_at",cutoff).catch(function(){});
   }
+  function runDiag(){
+    var el=$("#diag-out");if(el)el.textContent="Checking…";
+    var out=[];var u=(session&&session.user)?session.user.email:"(NOT logged in)";out.push("User: "+u);
+    var stamp=Date.now();
+    sb.from("kv").upsert({key:"__diag",value:{stamp:stamp}},{onConflict:"key"}).then(function(r){
+      out.push("Write: "+(r.error?("FAIL — "+r.error.message):"ok"));
+      return sb.from("kv").select("key,value").in("key",["__diag","settings"]);
+    }).then(function(r){
+      if(r.error){out.push("Read: FAIL — "+r.error.message);}
+      else{var o={};(r.data||[]).forEach(function(x){o[x.key]=x.value;});
+        out.push("Read back: "+(o.__diag&&o.__diag.stamp===stamp?"ok":"MISSING"));
+        out.push("Saved settings: "+(o.settings?("found · anniversary="+(o.settings.anniversary||"(blank)")):"MISSING"));}
+      if(el)el.textContent=out.join("\n");
+    }).catch(function(e){out.push("Error: "+((e&&e.message)||e));if(el)el.textContent=out.join("\n");});
+  }
   function startApp(){document.body.classList.remove("logged-out");ensureRealtime();purgeOld();
     applyTheme();applyBackground();go("home");
     Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();render();})
@@ -913,6 +928,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     else if(a==="download-album")downloadAlbum(id);
     else if(a==="backup-all")downloadAll();
     else if(a==="backup-drive")backupToDrive();
+    else if(a==="diag")runDiag();
     else if(a==="caption"){var p=findPhoto(id);if(p)modalForm({title:"Caption 💬",fields:[{name:"caption",label:"Write something",value:p.caption}],okText:"Save"}).then(function(r){if(r){p.caption=r.caption;Store.updatePhoto(p).then(function(){openPhoto(id);}).catch(cloudFail);}});}
     else if(a==="album-pick"){var ph=findPhoto(id);if(ph)Store.albums().then(function(albums){var opts=[{value:"",label:"— No album —"}].concat(albums.map(function(al){return {value:al.id,label:al.name};}));modalForm({title:"Move to album 📁",fields:[{name:"albumId",label:"Album",type:"select",value:ph.albumId||"",options:opts}],okText:"Move"}).then(function(r){if(r){ph.albumId=r.albumId||null;Store.updatePhoto(ph).then(function(){showToast("Moved 📁");refresh();}).catch(cloudFail);}});});}
     else if(a==="create-album")modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create"}).then(function(r){if(r&&r.name.trim())Store.addAlbum({id:uid(),name:r.name.trim(),createdAt:Date.now()}).then(renderPhotos).catch(cloudFail);});
