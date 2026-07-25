@@ -50,6 +50,16 @@ h2{font-size:17px;margin:0;}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .grid .cell img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;cursor:pointer;background:#ffe9f1;}
 .grid .cell{position:relative;}
+.sel-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ghost.small{padding:6px 14px;font-size:13px;border-radius:12px;}
+.grid .cell.picked img{outline:3px solid #ff4f8b;outline-offset:-3px;filter:brightness(.88);}
+.pick-badge{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.92);color:#ff4f8b;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:auto;}
+.cell.picked .pick-badge{background:#ff4f8b;color:#fff;}
+.mh-sel{font-weight:600;opacity:.65;font-size:11px;margin-left:8px;}
+.bulk-bar{position:fixed;left:12px;right:12px;bottom:82px;display:flex;gap:10px;z-index:60;}
+.bulk-bar button{flex:1;padding:14px;border:none;border-radius:16px;font-weight:800;font-size:15px;box-shadow:0 4px 16px rgba(0,0,0,.22);}
+.bulk-move{background:#fff;color:#ff4f8b;}
+.bulk-del{background:#ff5a6a;color:#fff;}
 .cell .who{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(255,143,171,.92);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .who-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .who-chip{border:1.5px solid var(--accent);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -272,7 +282,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 
   var sb=null, session=null, realtimeStarted=false;
   var settings=Object.assign({},DEFAULT_SETTINGS);
-  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null,noteSub:"notes",avatarSlot:1};
+  var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null,noteSub:"notes",avatarSlot:1,selectMode:false,selected:{}};
+  var lastPhotoList=[];
   var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input"),chatCamInput=$("#chat-cam-input"),avatarInput=$("#avatar-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
   var lastPhotos=[], lastEvents=[], lastNotes=[], lastTodos=[], signedCache={};
@@ -284,7 +295,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function initialOf(email){var h=handleOf(email);return h?h.charAt(0).toUpperCase():"?";}
   function avatarBig(slot){var url=slot===1?settings.avatar1:settings.avatar2,emo=slot===1?settings.emoji1:settings.emoji2;return url?'<div class="avatar" style="background:url(\''+url+'\') center/cover no-repeat"></div>':'<div class="avatar">'+esc(emo)+'</div>';}
   function avatarInner(slot){var url=slot===1?settings.avatar1:settings.avatar2,emo=slot===1?settings.emoji1:settings.emoji2;return '<span class="avatar-prev"'+(url?' style="background-image:url(\''+url+'\')"':'')+'>'+(url?'':esc(emo))+'</span>';}
-  function cellHtml(p){return '<div class="cell"><img loading="lazy" data-action="open-photo" data-id="'+p.id+'" src="'+p.url+'">'+(p.owner?'<span class="who" title="'+esc(p.owner)+'">'+esc(initialOf(p.owner))+'</span>':'')+'</div>';}
+  function cellHtml(p){var sm=state.selectMode,sel=sm&&state.selected[p.id],act=sm?"pick-photo":"open-photo";return '<div class="cell'+(sel?" picked":"")+'"><img loading="lazy" data-action="'+act+'" data-id="'+p.id+'" src="'+p.url+'">'+(p.owner?'<span class="who" title="'+esc(p.owner)+'">'+esc(initialOf(p.owner))+'</span>':'')+(sm?'<span class="pick-badge" data-action="'+act+'" data-id="'+p.id+'">'+(sel?"✓":"")+'</span>':'')+'</div>';}
   function fmtStamp(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function fmtTime(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
   function photoDate(p){return p.takenAt||p.createdAt;}
@@ -558,7 +569,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     if(state.tab==="chat")return renderChat();
     if(state.tab==="settings")return renderSettings();
   }
-  function go(tab){state.tab=tab;state.album=null;window.scrollTo(0,0);render();}
+  function go(tab){state.tab=tab;state.album=null;exitSelect();window.scrollTo(0,0);render();}
   function refresh(){return render();}
   function cloudFail(){showToast("Couldn’t reach the cloud — check your connection");}
 
@@ -591,12 +602,57 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
           owners.map(function(o){return '<button class="who-chip'+(state.owner===o?" active":"")+'" data-action="filter-owner" data-owner="'+esc(o)+'">'+esc(handleOf(o))+'</button>';}).join("")+'</div>';
       }
       var photos=state.owner?all.filter(function(p){return p.owner===state.owner;}):all;
+      lastPhotoList=photos;
+      var sm=state.selectMode,count=Object.keys(state.selected).length;
+      var toolbar="";
+      if(photos.length){
+        toolbar=sm
+          ?'<div class="sel-toolbar"><button class="ghost small" data-action="sel-off">Cancel</button><span id="sel-count" class="muted small" style="flex:1;text-align:center">'+(count?count+" selected":"Select photos")+'</span><button class="ghost small" data-action="sel-all">Select all</button></div>'
+          :'<div class="sel-toolbar"><span style="flex:1"></span><button class="ghost small" data-action="sel-on">Select</button></div>';
+      }
       var body;
       if(!photos.length){body='<div class="empty big">💕<br>No photos here yet<span>Tap the + button to add one</span></div>';}
-      else{body=groupByMonth(photos).map(function(g){return '<div class="month-head">'+esc(g.label)+'</div><div class="grid">'+g.items.map(cellHtml).join("")+'</div>';}).join("");}
-      $("#subview").innerHTML=chips+body;
-      setFab(true,null);
+      else{body=groupByMonth(photos).map(function(g){
+        var monthAll=g.items.length&&g.items.every(function(p){return state.selected[p.id];});
+        var head=sm
+          ?'<div class="month-head" data-action="sel-month" data-mk="'+g.key+'" style="cursor:pointer">'+esc(g.label)+'<span class="mh-sel">'+(monthAll?"✓ tap to clear":"tap to select all")+'</span></div>'
+          :'<div class="month-head">'+esc(g.label)+'</div>';
+        return head+'<div class="grid">'+g.items.map(cellHtml).join("")+'</div>';
+      }).join("");}
+      var bar=sm?'<div id="bulk-bar" class="bulk-bar" style="display:'+(count?"flex":"none")+'"><button class="bulk-move" data-action="bulk-move">📁 Move (<span id="bulk-move-n">'+count+'</span>)</button><button class="bulk-del" data-action="bulk-delete">🗑️ Delete (<span id="bulk-del-n">'+count+'</span>)</button></div>':'';
+      $("#subview").innerHTML=chips+toolbar+body+bar;
+      setFab(!sm,null);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
+  }
+  function exitSelect(){state.selectMode=false;state.selected={};}
+  function togglePick(id){
+    if(state.selected[id])delete state.selected[id];else state.selected[id]=true;
+    var img=document.querySelector('.cell [data-id="'+id+'"]'),cell=img?img.closest('.cell'):null;
+    if(cell){var on=!!state.selected[id];cell.classList.toggle('picked',on);var b=cell.querySelector('.pick-badge');if(b)b.textContent=on?"✓":"";}
+    updateBulkBar();
+  }
+  function updateBulkBar(){var n=Object.keys(state.selected).length;var bar=$("#bulk-bar");if(bar)bar.style.display=n?"flex":"none";var a=$("#bulk-move-n");if(a)a.textContent=n;var d=$("#bulk-del-n");if(d)d.textContent=n;var c=$("#sel-count");if(c)c.textContent=n?(n+" selected"):"Select photos";}
+  function selectMonth(mk){var ids=lastPhotoList.filter(function(p){return monthKey(p)===mk;}).map(function(p){return p.id;});var allOn=ids.length&&ids.every(function(id){return state.selected[id];});ids.forEach(function(id){if(allOn)delete state.selected[id];else state.selected[id]=true;});renderAllPhotos();}
+  function selectAllPhotos(){var ids=lastPhotoList.map(function(p){return p.id;});var allOn=ids.length&&ids.every(function(id){return state.selected[id];});ids.forEach(function(id){if(allOn)delete state.selected[id];else state.selected[id]=true;});renderAllPhotos();}
+  function bulkDelete(){var ids=Object.keys(state.selected);if(!ids.length)return;
+    confirmModal("Delete "+ids.length+" photo"+(ids.length>1?"s":"")+"? This can’t be undone.").then(function(ok){if(!ok)return;showToast("Deleting…");var i=0,done=0;
+      (function next(){if(i>=ids.length){exitSelect();showToast(done+" photo"+(done===1?"":"s")+" deleted 🗑️");renderPhotos();return;}var id=ids[i++];Store.deletePhoto(id).then(function(){done++;}).catch(function(){}).then(next);})();
+    });
+  }
+  function bulkMove(){var ids=Object.keys(state.selected);if(!ids.length)return;
+    Store.albums().then(function(albums){
+      var opts=albums.map(function(a){return {value:a.id,label:a.name};});
+      opts.push({value:"__none",label:"— Remove from album —"});
+      opts.push({value:"__new",label:"＋ New album…"});
+      return modalForm({title:"Move "+ids.length+" photo"+(ids.length>1?"s":"")+" to…",fields:[{name:"album",label:"Album",type:"select",options:opts,value:opts[0].value}],okText:"Move"});
+    }).then(function(r){
+      if(!r)return;var target=r.album;
+      if(target==="__new"){return modalForm({title:"New album ✨",fields:[{name:"name",label:"Album name",placeholder:"e.g. Our trips ✈️"}],okText:"Create & move"}).then(function(n){if(!n||!n.name.trim())return;var al={id:uid(),name:n.name.trim(),createdAt:Date.now()};return Store.addAlbum(al).then(function(){doBulkMove(ids,al.id);});});}
+      doBulkMove(ids,target==="__none"?null:target);
+    });
+  }
+  function doBulkMove(ids,albumId){showToast("Moving…");var i=0,ok=0;
+    (function next(){if(i>=ids.length){exitSelect();showToast(ok+" photo"+(ok===1?"":"s")+" moved 📁");renderPhotos();return;}var id=ids[i++],p=findPhoto(id);if(!p){next();return;}Store.updatePhoto({id:p.id,caption:p.caption,albumId:albumId}).then(function(){ok++;}).catch(function(){}).then(next);})();
   }
   function renderAlbums(){
     return Promise.all([Store.albums(),Store.photos()]).then(function(r){
@@ -918,10 +974,17 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   document.addEventListener("click",function(e){
     var t=e.target.closest("[data-tab],[data-sub],[data-notesub],[data-action]");if(!t)return;
     if(t.dataset.tab){go(t.dataset.tab);return;}
-    if(t.dataset.sub){state.sub=t.dataset.sub;state.album=null;renderPhotos();return;}
+    if(t.dataset.sub){state.sub=t.dataset.sub;state.album=null;exitSelect();renderPhotos();return;}
     if(t.dataset.notesub){state.noteSub=t.dataset.notesub;renderNotes();return;}
     var a=t.dataset.action,id=t.dataset.id;
     if(a==="open-photo")openPhoto(id);
+    else if(a==="pick-photo")togglePick(id);
+    else if(a==="sel-on"){state.selectMode=true;state.selected={};renderAllPhotos();}
+    else if(a==="sel-off"){exitSelect();renderAllPhotos();}
+    else if(a==="sel-all")selectAllPhotos();
+    else if(a==="sel-month")selectMonth(t.dataset.mk);
+    else if(a==="bulk-delete")bulkDelete();
+    else if(a==="bulk-move")bulkMove();
     else if(a==="close-viewer")closeViewer();
     else if(a==="delete-photo")confirmModal("Delete this photo?").then(function(ok){if(ok)Store.deletePhoto(id).then(function(){closeViewer();refresh();}).catch(cloudFail);});
     else if(a==="download-photo")downloadPhoto(findPhoto(id));
