@@ -619,7 +619,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
           :'<div class="month-head">'+esc(g.label)+'</div>';
         return head+'<div class="grid">'+g.items.map(cellHtml).join("")+'</div>';
       }).join("");}
-      var bar=sm?'<div id="bulk-bar" class="bulk-bar" style="display:'+(count?"flex":"none")+'"><button class="bulk-move" data-action="bulk-move">📁 Move (<span id="bulk-move-n">'+count+'</span>)</button><button class="bulk-del" data-action="bulk-delete">🗑️ Delete (<span id="bulk-del-n">'+count+'</span>)</button></div>':'';
+      var bar=sm?'<div id="bulk-bar" class="bulk-bar" style="display:'+(count?"flex":"none")+'"><button class="bulk-move" data-action="bulk-move">📁 Move to album (<span id="bulk-move-n">'+count+'</span>)</button></div>':'';
       $("#subview").innerHTML=chips+toolbar+body+bar;
       setFab(!sm,null);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
@@ -780,7 +780,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v5</p>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v6</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -960,10 +960,14 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       if(el)el.textContent=out.join("\n");
     }).catch(function(e){out.push("Error: "+((e&&e.message)||e));if(el)el.textContent=out.join("\n");});
   }
+  function loadSettings(){return Store.settings().then(function(s){
+    var real=!!(s&&(s.name1!=null||s.anniversary!=null||s.theme!=null||s.telegram!=null));
+    if(real){settings=Object.assign({},DEFAULT_SETTINGS,s);applyTheme();applyBackground();if(session&&state.tab==="home")renderHome();}
+    return real;
+  }).catch(function(){return false;});}
   function startApp(){document.body.classList.remove("logged-out");ensureRealtime();purgeOld();
     applyTheme();applyBackground();go("home");
-    Store.settings().then(function(s){settings=Object.assign({},DEFAULT_SETTINGS,s||{});applyTheme();applyBackground();render();})
-      .catch(function(){applyTheme();applyBackground();render();});
+    var tries=0;(function attempt(){loadSettings().then(function(real){if(!real&&session&&tries<5){tries++;setTimeout(attempt,800);}});})();
   }
   function showLogin(){session=null;setFab(false);state.authMode="in";renderAuth();}
   function ensureRealtime(){if(realtimeStarted)return;realtimeStarted=true;
@@ -1054,8 +1058,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     chatPhotoInput.addEventListener("change",onChatPhoto);
     chatCamInput.addEventListener("change",onChatCam);
     avatarInput.addEventListener("change",onAvatarUpload);
-    sb.auth.getSession().then(function(res){session=res.data.session;if(session)startApp();else showLogin();});
-    sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_IN"&&s){startApp();}else if(evt==="SIGNED_OUT"){showLogin();}});
+    var started=false;
+    function begin(){if(started){loadSettings();return;}started=true;startApp();}
+    sb.auth.getSession().then(function(res){session=res.data.session;if(session)begin();else showLogin();});
+    sb.auth.onAuthStateChange(function(evt,s){session=s;if(evt==="SIGNED_OUT"){started=false;showLogin();}else if(s){begin();}});
   }
   boot();
 
