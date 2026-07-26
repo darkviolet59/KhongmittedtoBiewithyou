@@ -60,6 +60,14 @@ h2{font-size:17px;margin:0;}
 .bulk-bar button{flex:1;padding:14px;border:none;border-radius:16px;font-weight:800;font-size:15px;box-shadow:0 4px 16px rgba(0,0,0,.22);}
 .bulk-move{background:#fff;color:#ff4f8b;}
 .bulk-del{background:#ff5a6a;color:#fff;}
+.month-head.sel{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.mh-check{width:24px;height:24px;border-radius:50%;border:2px solid #ff4f8b;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;box-sizing:border-box;flex:none;}
+.mh-check.on{background:#ff4f8b;}
+.up-progress{position:fixed;left:12px;right:12px;bottom:82px;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,.22);z-index:80;}
+.up-row{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:#444;margin-bottom:8px;}
+.up-count{color:#ff4f8b;}
+.up-track{height:8px;border-radius:6px;background:#ffe0ec;overflow:hidden;}
+.up-fill{height:100%;background:linear-gradient(90deg,#ff8fb3,#ff4f8b);width:0;transition:width .25s ease;border-radius:6px;}
 .cell .who{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(255,143,171,.92);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .who-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .who-chip{border:1.5px solid var(--accent);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -284,6 +292,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   var settings=Object.assign({},DEFAULT_SETTINGS);
   var state={tab:"home",sub:"all",album:null,uploadAlbumId:null,authMode:"in",owner:null,noteSub:"notes",avatarSlot:1,selectMode:false,selected:{}};
   var lastPhotoList=[];
+  var uploading=false,wakeLock=null;
   var view=$("#view"),viewer=$("#viewer"),fileInput=$("#file-input"),bgInput=$("#bg-input"),chatPhotoInput=$("#chat-photo-input"),chatCamInput=$("#chat-cam-input"),avatarInput=$("#avatar-input");
   var deferredPrompt=null,toastTimer=null,refreshTimer=null;
   var lastPhotos=[], lastEvents=[], lastNotes=[], lastTodos=[], signedCache={};
@@ -615,7 +624,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       else{body=groupByMonth(photos).map(function(g){
         var monthAll=g.items.length&&g.items.every(function(p){return state.selected[p.id];});
         var head=sm
-          ?'<div class="month-head" data-action="sel-month" data-mk="'+g.key+'" style="cursor:pointer">'+esc(g.label)+'<span class="mh-sel">'+(monthAll?"✓ tap to clear":"tap to select all")+'</span></div>'
+          ?'<div class="month-head sel" data-action="sel-month" data-mk="'+g.key+'"><span>'+esc(g.label)+'</span><span class="mh-check'+(monthAll?" on":"")+'">'+(monthAll?"✓":"")+'</span></div>'
           :'<div class="month-head">'+esc(g.label)+'</div>';
         return head+'<div class="grid">'+g.items.map(cellHtml).join("")+'</div>';
       }).join("");}
@@ -780,7 +789,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v6</p>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v7</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -888,31 +897,43 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   });}
 
   /* ---------- uploads ---------- */
+  function showProgress(done,total){
+    var el=document.getElementById("up-progress");
+    if(!el){el=document.createElement("div");el.id="up-progress";el.className="up-progress";el.innerHTML='<div class="up-row"><span class="up-label">Uploading photos…</span><span class="up-count"></span></div><div class="up-track"><div class="up-fill"></div></div>';document.body.appendChild(el);}
+    var pct=total?Math.round(done/total*100):0;
+    el.querySelector(".up-count").textContent=done+" / "+total;
+    el.querySelector(".up-fill").style.width=pct+"%";
+    el.style.display="block";
+  }
+  function hideProgress(){var el=document.getElementById("up-progress");if(el)el.style.display="none";}
+  function acquireWake(){try{if(navigator.wakeLock&&navigator.wakeLock.request){navigator.wakeLock.request("screen").then(function(w){wakeLock=w;}).catch(function(){});}}catch(e){}}
+  function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
   function onUpload(){
     var files=Array.prototype.slice.call(fileInput.files).filter(function(f){return f.type&&f.type.indexOf("image/")===0;});
     fileInput.value="";
     if(!files.length)return;
     var alb=state.uploadAlbumId||null,total=files.length,done=0,skipped=0;
-    showToast("Preparing "+total+" photo"+(total>1?"s":"")+"…");
+    uploading=true;acquireWake();showProgress(0,total);
     sb.from("photos").select("fp").then(function(res){
       var hasFp=!res.error,seen={};
       if(hasFp)(res.data||[]).forEach(function(r){if(r.fp)seen[r.fp]=1;});
       var chain=Promise.resolve();
       files.forEach(function(f){chain=chain.then(function(){
         var fp=hasFp?(f.size+"-"+(f.lastModified||0)):undefined;
-        if(hasFp&&seen[fp]){skipped++;done++;showToast("Uploading "+done+"/"+total+"…");return;}
+        if(hasFp&&seen[fp]){skipped++;done++;showProgress(done,total);return;}
         if(hasFp)seen[fp]=1;
         return readExifData(f).then(function(meta){var taken=meta.date||f.lastModified||Date.now();
           return (meta.lat!=null?reverseGeocodeSafe(meta.lat,meta.lon):Promise.resolve("")).then(function(place){
             return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,place,fp);});
           });
-        }).then(function(){done++;showToast("Uploading "+done+"/"+total+"…");});
+        }).then(function(){done++;showProgress(done,total);});
       });});
       return chain;
     }).then(function(){return refresh();}).then(function(){
       var added=total-skipped;
       if(added>0)playSound();showToast(added>0?("Added "+added+(skipped?" · "+skipped+" already there":"")+" 💕"):(skipped+" already uploaded ✓"));
-    }).catch(function(){showToast("Upload failed — check your connection");});
+    }).catch(function(){showToast("Some photos didn’t upload — reopen the app to finish the rest");})
+    .then(function(){uploading=false;hideProgress();releaseWake();});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
 
@@ -1042,7 +1063,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   window.addEventListener("appinstalled",function(){deferredPrompt=null;showToast("Installed 🎉");});
   var pickAt=0;
   document.addEventListener("click",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.type==="file")pickAt=Date.now();ensureAudio();},true);
-  document.addEventListener("visibilitychange",function(){if(!document.hidden&&session){if(Date.now()-pickAt<120000)render();else go("home");}});
+  document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(uploading)acquireWake();if(session){if(uploading)return;if(Date.now()-pickAt<120000)render();else go("home");}});
   window.addEventListener("focus",function(){if(session)render();});
 
   /* ---------- boot ---------- */
