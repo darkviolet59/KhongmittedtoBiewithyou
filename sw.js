@@ -2,11 +2,12 @@
    Strategy: the page itself is fetched fresh from the network when online (so your
    edits show up right away), and falls back to the saved copy only when offline.
    Icons/manifest are served from cache for speed. */
-var CACHE = "us-app-v7";
+var CACHE = "us-app-v8";
 var ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./icons/favicon.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
