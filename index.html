@@ -82,6 +82,25 @@ h2{font-size:17px;margin:0;}
 .cell.vid video{width:100%;height:100%;object-fit:cover;display:block;}
 .cell.vid .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;padding-left:3px;pointer-events:none;}
 .throw-intro{font-weight:800;font-size:17px;margin:6px 2px 2px;color:var(--accent);}
+.tb-hero{position:relative;overflow:hidden;border-radius:20px;padding:22px 18px 20px;text-align:center;color:#fff;background:linear-gradient(120deg,var(--accent),#ff7eb3,#ffa9c0,var(--accent));background-size:300% 300%;animation:tbShine 7s ease infinite;margin:4px 2px 14px;box-shadow:0 12px 26px rgba(255,120,160,.34);}
+@keyframes tbShine{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.tb-hero h2{margin:6px 0 2px;font-size:26px;letter-spacing:.4px;}
+.tb-hero p{margin:0;opacity:.96;font-size:13px;}
+.tb-hero-emoji{font-size:44px;display:inline-block;animation:tbSwing 2.4s ease-in-out infinite;transform-origin:50% 80%;}
+@keyframes tbSwing{0%,100%{transform:rotate(-13deg)}50%{transform:rotate(13deg)}}
+.tb-sparks{position:absolute;inset:0;pointer-events:none;}
+.tb-sparks span{position:absolute;bottom:-12px;font-size:18px;opacity:0;animation:tbFloat 4.2s linear infinite;}
+.tb-sparks span:nth-child(1){left:12%;animation-delay:0s}
+.tb-sparks span:nth-child(2){left:32%;animation-delay:1.2s}
+.tb-sparks span:nth-child(3){left:54%;animation-delay:2.1s}
+.tb-sparks span:nth-child(4){left:72%;animation-delay:.7s}
+.tb-sparks span:nth-child(5){left:88%;animation-delay:1.7s}
+@keyframes tbFloat{0%{transform:translateY(0) scale(.6) rotate(0);opacity:0}15%{opacity:.95}100%{transform:translateY(-125px) scale(1.1) rotate(20deg);opacity:0}}
+.tb-year{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-weight:800;font-size:14px;padding:6px 14px;border-radius:999px;margin:16px 2px 10px;box-shadow:0 5px 12px rgba(255,120,160,.3);animation:tbBadge .55s cubic-bezier(.2,.8,.3,1.2) both;}
+@keyframes tbBadge{from{opacity:0;transform:translateX(-16px) scale(.9)}to{opacity:1;transform:none}}
+.throwbacks .cell{animation:tbPop .5s cubic-bezier(.2,.8,.3,1.3) both;}
+@keyframes tbPop{from{opacity:0;transform:scale(.8) translateY(14px)}to{opacity:1;transform:none}}
+.tb-bigemo{display:inline-block;font-size:44px;animation:tbSwing 2.4s ease-in-out infinite;transform-origin:50% 80%;}
 .focus-ring{position:fixed;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.3);animation:fr .7s ease-out;pointer-events:none;z-index:100;}
 @keyframes fr{from{transform:scale(1.4);opacity:0}30%{opacity:1}to{transform:scale(1);opacity:.2}}
 .cam-hint{position:absolute;top:14px;left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none;}
@@ -202,8 +221,8 @@ input[type=range]{accent-color:var(--accent);padding:0;}
 .bg-prev.photo{border:2px dashed var(--accent);background:#fff;}
 .tab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid #ffe0ea;padding-bottom:env(safe-area-inset-bottom);z-index:5;}
 .tab{flex:1;border:none;background:none;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);cursor:pointer;}
-.tab span{font-size:22px;filter:grayscale(.4);opacity:.65;transition:.15s;}
-.tab small{font-size:10px;font-weight:700;}
+.tab span{font-size:21px;filter:grayscale(.4);opacity:.65;transition:.15s;}
+.tab small{font-size:9px;font-weight:700;white-space:nowrap;}
 .tab.active{color:var(--accent);}
 .tab.active span{filter:none;opacity:1;transform:translateY(-1px);}
 body.logged-out .tab-bar,body.logged-out #fab,body.logged-out #bg-btn{display:none!important;}
@@ -244,6 +263,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   <nav class="tab-bar">
     <button class="tab" data-tab="home"><span>🏠</span><small>Home</small></button>
     <button class="tab" data-tab="photos"><span>📷</span><small>Photos</small></button>
+    <button class="tab" data-tab="throwbacks"><span>🕰️</span><small>Throwback</small></button>
     <button class="tab" data-tab="notes"><span>📝</span><small>Notes</small></button>
     <button class="tab" data-tab="chat"><span>💬</span><small>Chat</small></button>
     <button class="tab" data-tab="calendar"><span>📅</span><small>Days</small></button>
@@ -592,6 +612,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function render(){if(!session)return;setActiveTab();var _bg=$("#bg-btn");if(_bg)_bg.style.display=(state.tab==="home")?"flex":"none";applyPageBg();
     if(state.tab==="home")return renderHome();
     if(state.tab==="photos")return renderPhotos();
+    if(state.tab==="throwbacks")return renderThrowbacks();
     if(state.tab==="notes")return renderNotes();
     if(state.tab==="calendar")return renderCalendar();
     if(state.tab==="chat")return renderChat();
@@ -615,10 +636,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
 
   function renderPhotos(){
-    view.innerHTML='<div class="subtabs"><button class="subtab'+(state.sub==="all"?" active":"")+'" data-sub="all">All Photos</button><button class="subtab'+(state.sub==="albums"?" active":"")+'" data-sub="albums">Albums</button><button class="subtab'+(state.sub==="video"?" active":"")+'" data-sub="video">Video</button><button class="subtab'+(state.sub==="throwbacks"?" active":"")+'" data-sub="throwbacks">Throwbacks</button></div><div id="subview"><div class="empty">Loading 💫</div></div>';
+    view.innerHTML='<div class="subtabs"><button class="subtab'+(state.sub==="all"?" active":"")+'" data-sub="all">All Photos</button><button class="subtab'+(state.sub==="albums"?" active":"")+'" data-sub="albums">Albums</button><button class="subtab'+(state.sub==="video"?" active":"")+'" data-sub="video">Video</button></div><div id="subview"><div class="empty">Loading 💫</div></div>';
     if(state.sub==="all")return renderAllPhotos();
     if(state.sub==="video")return renderVideos();
-    if(state.sub==="throwbacks")return renderThrowbacks();
     if(state.album)return renderAlbumDetail(state.album);
     return renderAlbums();
   }
@@ -672,26 +692,30 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
   /* Throwbacks: "On this day" from past years — same calendar day (±3 days), grouped by years ago. */
   function dayNear(d,now,tol){var a=new Date(now.getFullYear(),d.getMonth(),d.getDate()),b=new Date(now.getFullYear(),now.getMonth(),now.getDate());var diff=Math.round((a-b)/86400000);if(diff>182)diff-=365;if(diff<-182)diff+=365;return Math.abs(diff)<=tol;}
+  function staggerCells(){var cells=document.querySelectorAll(".throwbacks .cell");for(var i=0;i<cells.length;i++)cells[i].style.animationDelay=(Math.min(i,24)*45)+"ms";}
   function renderThrowbacks(){
+    setFab(false);
+    view.innerHTML='<div class="throwbacks"><div class="tb-hero"><div class="tb-sparks"><span>✨</span><span>💫</span><span>💖</span><span>⭐</span><span>🎞️</span></div><div class="tb-hero-emoji">🕰️</div><h2>Throwbacks</h2><p>Your memories from this day 💕</p></div><div id="tb-body"><div class="empty">Loading 💫</div></div></div>';
     return Store.photos().then(function(all){
       all=all.filter(function(p){return !isVideo(p);});
       var now=new Date(),tY=now.getFullYear(),groups={};
       all.forEach(function(p){var d=new Date(photoDate(p)),ya=tY-d.getFullYear();if(ya>=1&&dayNear(d,now,3))(groups[ya]=groups[ya]||[]).push(p);});
       var years=Object.keys(groups).map(Number).sort(function(a,b){return a-b;});
+      var host=$("#tb-body");if(!host)return;
       if(years.length){
         var flat=[];
-        $("#subview").innerHTML='<div class="throw-intro">✨ On this day</div>'+years.map(function(y){
+        host.innerHTML=years.map(function(y){
           var items=groups[y].sort(function(a,b){return photoDate(b)-photoDate(a);});flat=flat.concat(items);
-          return '<div class="month-head">'+y+' year'+(y>1?'s':'')+' ago</div><div class="grid">'+items.map(cellHtml).join("")+'</div>';
+          return '<div class="tb-year">🎈 '+y+' year'+(y>1?'s':'')+' ago</div><div class="grid">'+items.map(cellHtml).join("")+'</div>';
         }).join("");
         lastPhotoList=flat;
       }else{
         var monthItems=all.filter(function(p){var d=new Date(photoDate(p));return d.getMonth()===now.getMonth()&&(tY-d.getFullYear())>=1;}).sort(function(a,b){return photoDate(b)-photoDate(a);});
-        if(monthItems.length){lastPhotoList=monthItems;$("#subview").innerHTML='<div class="throw-intro">✨ This month, in years past</div><div class="grid">'+monthItems.map(cellHtml).join("")+'</div>';}
-        else{$("#subview").innerHTML='<div class="empty big">🕰️<br>No throwbacks yet<span>Memories from this day in past years will appear here as your album grows 💕</span></div>';}
+        if(monthItems.length){lastPhotoList=monthItems;host.innerHTML='<div class="tb-year">🗓️ This month, in years past</div><div class="grid">'+monthItems.map(cellHtml).join("")+'</div>';}
+        else{lastPhotoList=[];host.innerHTML='<div class="empty big"><span class="tb-bigemo">🕰️</span><br>No throwbacks yet<span>Come back over time — memories from this day in past years will pop up here 💕</span></div>';}
       }
-      setFab(false);
-    }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
+      staggerCells();
+    }).catch(function(){var h=$("#tb-body");if(h)h.innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
   function exitSelect(){state.selectMode=false;state.selected={};}
   function togglePick(id){
@@ -850,7 +874,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v9</p>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v10</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
