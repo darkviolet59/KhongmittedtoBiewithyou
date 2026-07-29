@@ -6,7 +6,10 @@
 <meta name="theme-color" content="#ff8fab">
 <title>Hi 💕</title>
 <link rel="manifest" href="./manifest.json">
-<link rel="icon" type="image/png" href="./icons/favicon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="./icons/favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+<link rel="shortcut icon" href="./icons/favicon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -69,6 +72,19 @@ h2{font-size:17px;margin:0;}
 .up-count{color:#ff4f8b;}
 .up-track{height:8px;border-radius:6px;background:#ffe0ec;overflow:hidden;}
 .up-fill{height:100%;background:linear-gradient(90deg,#ff8fb3,#ff4f8b);width:0;transition:width .25s ease;border-radius:6px;}
+.subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;scrollbar-width:none;}
+.subtabs::-webkit-scrollbar{display:none;}
+.viewer-nav{position:fixed;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:none;background:rgba(0,0,0,.42);color:#fff;font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:60;cursor:pointer;padding-bottom:3px;}
+.viewer-nav.prev{left:10px;}
+.viewer-nav.next{right:10px;}
+.viewer-nav:active{background:rgba(0,0,0,.65);}
+.cell.vid{position:relative;background:#000;}
+.cell.vid video{width:100%;height:100%;object-fit:cover;display:block;}
+.cell.vid .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;padding-left:3px;pointer-events:none;}
+.throw-intro{font-weight:800;font-size:17px;margin:6px 2px 2px;color:var(--accent);}
+.focus-ring{position:fixed;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.3);animation:fr .7s ease-out;pointer-events:none;z-index:100;}
+@keyframes fr{from{transform:scale(1.4);opacity:0}30%{opacity:1}to{transform:scale(1);opacity:.2}}
+.cam-hint{position:absolute;top:14px;left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none;}
 .cell .who{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;background:rgba(255,143,171,.92);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .who-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .who-chip{border:1.5px solid var(--accent);background:#fff;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -237,7 +253,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
 <div id="viewer" class="viewer"></div>
 <div id="modal-root"></div>
 <div id="toast" class="toast"></div>
-<input id="file-input" type="file" accept="image/*" multiple hidden>
+<input id="file-input" type="file" accept="image/*,video/*" multiple hidden>
 <input id="bg-input" type="file" accept="image/*" hidden>
 <input id="chat-photo-input" type="file" accept="image/*" hidden>
 <input id="chat-cam-input" type="file" accept="image/*" capture="environment" hidden>
@@ -309,6 +325,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function fmtStamp(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});}
   function fmtTime(ts){if(!ts)return"";return new Date(Number(ts)).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
   function photoDate(p){return p.takenAt||p.createdAt;}
+  function isVideo(p){return /\.(mp4|mov|m4v|webm|avi|mkv|3gp)$/i.test((p&&p.path)||"");}
   function monthKey(p){var d=new Date(photoDate(p));return d.getFullYear()+"-"+d.getMonth();}
   function monthLabel(p){var d=new Date(photoDate(p));return d.toLocaleDateString(undefined,{month:"long",year:"numeric"});}
   function groupByMonth(list){var out=[],cur=null;list.forEach(function(p){var k=monthKey(p);if(!cur||cur.key!==k){cur={key:k,label:monthLabel(p),items:[]};out.push(cur);}cur.items.push(p);});return out;}
@@ -427,8 +444,9 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
         var row={id:id,caption:"",album_id:albumId||null,created_at:Date.now(),taken_at:taken||Date.now(),path:path,owner_email:owner,lat:(lat==null?null:lat),lon:(lon==null?null:lon),place:place||null,store:useR2?"r2":"supabase"};
         if(fp!==undefined&&fp!==null)row.fp=fp;
         return sb.from("photos").insert(row);
-      }).then(function(res){if(res.error)throw res.error;});},
+      }).then(function(res){if(res.error)throw res.error;return id;});},
     updatePhoto:function(p){return sb.from("photos").update({caption:p.caption,album_id:p.albumId||null}).eq("id",p.id);},
+    setPlace:function(id,place){return sb.from("photos").update({place:place||null}).eq("id",id);},
     setDriveId:function(id,fid){return sb.from("photos").update({drive_id:fid}).eq("id",id);},
     deletePhoto:function(id){var p=findPhoto(id),path=p?p.path:(id+".jpg"),store=p?p.store:"supabase",token=(session&&session.access_token)||"";
       var del=(store==="r2")?fetch(R2_WORKER+"/delete?key="+encodeURIComponent(path),{method:"POST",headers:{"X-Token":token}}).catch(function(){}):sb.storage.from(BUCKET).remove([path]).catch(function(){});
@@ -597,13 +615,16 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   }
 
   function renderPhotos(){
-    view.innerHTML='<div class="subtabs"><button class="subtab'+(state.sub==="all"?" active":"")+'" data-sub="all">All Photos</button><button class="subtab'+(state.sub==="albums"?" active":"")+'" data-sub="albums">Albums</button></div><div id="subview"><div class="empty">Loading 💫</div></div>';
+    view.innerHTML='<div class="subtabs"><button class="subtab'+(state.sub==="all"?" active":"")+'" data-sub="all">All Photos</button><button class="subtab'+(state.sub==="albums"?" active":"")+'" data-sub="albums">Albums</button><button class="subtab'+(state.sub==="video"?" active":"")+'" data-sub="video">Video</button><button class="subtab'+(state.sub==="throwbacks"?" active":"")+'" data-sub="throwbacks">Throwbacks</button></div><div id="subview"><div class="empty">Loading 💫</div></div>';
     if(state.sub==="all")return renderAllPhotos();
+    if(state.sub==="video")return renderVideos();
+    if(state.sub==="throwbacks")return renderThrowbacks();
     if(state.album)return renderAlbumDetail(state.album);
     return renderAlbums();
   }
   function renderAllPhotos(){
     return Store.photos().then(function(all){
+      all=all.filter(function(p){return !isVideo(p);});
       all.sort(function(a,b){return photoDate(b)-photoDate(a);});
       var owners=[];all.forEach(function(p){if(p.owner&&owners.indexOf(p.owner)<0)owners.push(p.owner);});
       var chips="";
@@ -632,6 +653,44 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       var bar=sm?'<div id="bulk-bar" class="bulk-bar" style="display:'+(count?"flex":"none")+'"><button class="bulk-move" data-action="bulk-move">📁 Move to album (<span id="bulk-move-n">'+count+'</span>)</button></div>':'';
       $("#subview").innerHTML=chips+toolbar+body+bar;
       setFab(!sm,null);
+    }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
+  }
+  function vidCell(p){return '<div class="cell vid" data-action="open-video" data-id="'+p.id+'"><video src="'+p.url+'#t=0.1" preload="metadata" muted playsinline></video><span class="play">▶</span></div>';}
+  function renderVideos(){
+    return Store.photos().then(function(all){
+      var vids=all.filter(isVideo).sort(function(a,b){return photoDate(b)-photoDate(a);});
+      if(!vids.length){$("#subview").innerHTML='<div class="empty big">🎬<br>No videos yet<span>Tap the + button to add one</span></div>';}
+      else{$("#subview").innerHTML=groupByMonth(vids).map(function(g){
+        return '<div class="month-head">'+esc(g.label)+'</div><div class="grid">'+g.items.map(vidCell).join("")+'</div>';
+      }).join("");}
+      setFab(true,null);
+    }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
+  }
+  function openVideo(id){var p=findPhoto(id);if(!p)return;viewer.setAttribute("data-pid","");
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><video src="'+p.url+'" controls autoplay playsinline style="max-width:100%;max-height:76vh;border-radius:12px;background:#000"></video><div class="viewer-bar"><button data-action="download-photo" data-id="'+id+'">⬇️ Save</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.owner?'<div class="viewer-who">🎬 Added by '+esc(handleOf(p.owner))+'</div>':"");
+    viewer.classList.add("open");
+  }
+  /* Throwbacks: "On this day" from past years — same calendar day (±3 days), grouped by years ago. */
+  function dayNear(d,now,tol){var a=new Date(now.getFullYear(),d.getMonth(),d.getDate()),b=new Date(now.getFullYear(),now.getMonth(),now.getDate());var diff=Math.round((a-b)/86400000);if(diff>182)diff-=365;if(diff<-182)diff+=365;return Math.abs(diff)<=tol;}
+  function renderThrowbacks(){
+    return Store.photos().then(function(all){
+      all=all.filter(function(p){return !isVideo(p);});
+      var now=new Date(),tY=now.getFullYear(),groups={};
+      all.forEach(function(p){var d=new Date(photoDate(p)),ya=tY-d.getFullYear();if(ya>=1&&dayNear(d,now,3))(groups[ya]=groups[ya]||[]).push(p);});
+      var years=Object.keys(groups).map(Number).sort(function(a,b){return a-b;});
+      if(years.length){
+        var flat=[];
+        $("#subview").innerHTML='<div class="throw-intro">✨ On this day</div>'+years.map(function(y){
+          var items=groups[y].sort(function(a,b){return photoDate(b)-photoDate(a);});flat=flat.concat(items);
+          return '<div class="month-head">'+y+' year'+(y>1?'s':'')+' ago</div><div class="grid">'+items.map(cellHtml).join("")+'</div>';
+        }).join("");
+        lastPhotoList=flat;
+      }else{
+        var monthItems=all.filter(function(p){var d=new Date(photoDate(p));return d.getMonth()===now.getMonth()&&(tY-d.getFullYear())>=1;}).sort(function(a,b){return photoDate(b)-photoDate(a);});
+        if(monthItems.length){lastPhotoList=monthItems;$("#subview").innerHTML='<div class="throw-intro">✨ This month, in years past</div><div class="grid">'+monthItems.map(cellHtml).join("")+'</div>';}
+        else{$("#subview").innerHTML='<div class="empty big">🕰️<br>No throwbacks yet<span>Memories from this day in past years will appear here as your album grows 💕</span></div>';}
+      }
+      setFab(false);
     }).catch(function(){$("#subview").innerHTML='<div class="empty">Couldn’t load — reopen to retry.</div>';});
   }
   function exitSelect(){state.selectMode=false;state.selected={};}
@@ -757,20 +816,21 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function openCamera(){
     if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){chatCamInput.click();return;}
     var ov=document.createElement("div");ov.className="cam-overlay";
-    ov.innerHTML='<video id="cam-video" autoplay playsinline muted></video><div class="cam-bar"><button class="cam-btn" data-camx>✕</button><button class="cam-shot" data-camshot aria-label="Take photo"></button><button class="cam-btn" data-camflip>🔄</button></div>';
+    ov.innerHTML='<video id="cam-video" autoplay playsinline muted></video><div class="cam-hint">Tap the picture to focus</div><div class="cam-bar"><button class="cam-btn" data-camx>✕</button><button class="cam-shot" data-camshot aria-label="Take photo"></button><button class="cam-btn" data-camflip>🔄</button></div>';
     document.body.appendChild(ov);
-    var video=ov.querySelector("#cam-video"),facing="environment",stream=null;
-    function stop(){if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}}
+    var video=ov.querySelector("#cam-video"),facing="environment",stream=null,track=null;
+    function stop(){if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}track=null;}
     function close(){stop();if(ov.parentNode)ov.parentNode.removeChild(ov);}
-    function start(){stop();navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false}).then(function(s){stream=s;video.srcObject=s;}).catch(function(){close();chatCamInput.click();});}
+    function start(){stop();navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(function(s){stream=s;video.srcObject=s;track=s.getVideoTracks()[0];try{if(track)track.applyConstraints({advanced:[{focusMode:"continuous"}]}).catch(function(){});}catch(e){}}).catch(function(){close();chatCamInput.click();});}
     ov.querySelector("[data-camx]").onclick=close;
     ov.querySelector("[data-camflip]").onclick=function(){facing=(facing==="environment"?"user":"environment");start();};
+    video.addEventListener("click",function(ev){if(!track)return;var rect=video.getBoundingClientRect(),fx=Math.min(1,Math.max(0,(ev.clientX-rect.left)/rect.width)),fy=Math.min(1,Math.max(0,(ev.clientY-rect.top)/rect.height));try{track.applyConstraints({advanced:[{focusMode:"single-shot",pointsOfInterest:[{x:fx,y:fy}]}]}).catch(function(){});}catch(e){}var ring=document.createElement("div");ring.className="focus-ring";ring.style.left=ev.clientX+"px";ring.style.top=ev.clientY+"px";ov.appendChild(ring);setTimeout(function(){if(ring.parentNode)ring.parentNode.removeChild(ring);},700);});
     ov.querySelector("[data-camshot]").onclick=function(){
       if(!video.videoWidth)return;
-      var maxd=900,w=video.videoWidth,h=video.videoHeight,sc=Math.min(1,maxd/Math.max(w,h));
+      var maxd=1600,w=video.videoWidth,h=video.videoHeight,sc=Math.min(1,maxd/Math.max(w,h));
       var c=document.createElement("canvas");c.width=Math.round(w*sc);c.height=Math.round(h*sc);
       c.getContext("2d").drawImage(video,0,0,c.width,c.height);
-      var url=c.toDataURL("image/jpeg",0.55);close();showToast("Sending photo…");
+      var url=c.toDataURL("image/jpeg",0.72);close();showToast("Sending photo…");
       Store.addMessage({id:uid(),text:"",image:url,createdAt:Date.now(),sender:(session&&session.user&&session.user.email)||null}).then(loadChat).then(function(){showToast("Sent 🖼️");}).catch(function(){showToast("Couldn’t send that photo");});
     };
     start();
@@ -790,7 +850,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       '<button type="button" class="ghost" data-action="test-sound">🔊 Test sound</button>'+
       '<button type="submit" class="primary">Save 💾</button></form>'+
       '<div class="settings-block"><h3>Account 💞</h3><p class="muted small">Signed in'+(email?" as "+esc(email):"")+'. Everything syncs to your private cloud — both phones share the same photos, albums and days automatically.</p><button class="ghost" data-action="signout">Sign out</button></div>'+
-      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v8</p>';
+      '<div class="settings-block"><h3>Install the app 📲</h3><p class="muted small">Android: browser menu (⋮) → “Add to Home screen”.<br>iPhone: Share (□↑) in Safari → “Add to Home Screen”.</p><button class="ghost" id="install-btn" data-action="install" style="display:none">📲 Install now</button></div>'+'<div class="settings-block"><h3>Storage 💾</h3><div id="storage-usage"><p class="muted small">Checking…</p></div></div>'+'<div class="settings-block"><h3>Back up to cloud ☁️</h3><p class="muted small">Back up your photos at original quality, named by the date they were taken.</p><button class="ghost" data-action="backup-drive">☁️ Back up to Google Drive</button><button class="ghost" data-action="backup-all">⬇️ Or download all as a file</button></div>'+'<div class="settings-block"><h3>Sync check 🔧</h3><p class="muted small">Tests whether saving works right now. Tap it, then tell me what the message says.</p><button class="ghost" data-action="diag">Run sync check</button><div id="diag-out" class="muted small" style="margin-top:8px;white-space:pre-line"></div></div>'+'<p class="muted small" style="text-align:center;margin-top:16px">Made with 💗 · v9</p>';
     setFab(false);
     if(deferredPrompt){var b=$("#install-btn");if(b)b.style.display="inline-flex";}
     updateStorageUsage();
@@ -858,10 +918,15 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     }).catch(function(){showToast("Drive backup failed — try again");});
   }
   function openPhoto(id){var p=findPhoto(id);if(!p)return;
-    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button><img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button data-action="download-photo" data-id="'+id+'">⬇️ Save</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
+    var _l=lastPhotoList||[],_i=-1;for(var _k=0;_k<_l.length;_k++)if(_l[_k].id===id){_i=_k;break;}
+    var _prev=_i>0?'<button class="viewer-nav prev" data-action="nav-photo" data-dir="-1" aria-label="Previous">‹</button>':'';
+    var _next=(_i>=0&&_i<_l.length-1)?'<button class="viewer-nav next" data-action="nav-photo" data-dir="1" aria-label="Next">›</button>':'';
+    viewer.setAttribute("data-pid",id);
+    viewer.innerHTML='<div class="viewer-date">'+fmtStamp(photoDate(p))+'</div><button class="viewer-close" data-action="close-viewer">✕</button>'+_prev+_next+'<img src="'+p.url+'"><div class="viewer-bar"><button data-action="caption" data-id="'+id+'">📝 '+(p.caption?"Edit caption":"Add caption")+'</button><button data-action="album-pick" data-id="'+id+'">📁 Album</button>'+(p.albumId?'<button data-action="set-cover" data-id="'+id+'">⭐ Cover</button>':'')+'<button data-action="download-photo" data-id="'+id+'">⬇️ Save</button><button class="danger" data-action="delete-photo" data-id="'+id+'">🗑️ Delete</button></div>'+(p.caption?'<div class="viewer-caption">'+esc(p.caption)+'</div>':"")+(p.owner?'<div class="viewer-who">📷 Added by '+esc(handleOf(p.owner))+'</div>':"")+(p.lat!=null?'<a class="viewer-loc" href="https://maps.google.com/?q='+p.lat+','+p.lon+'" target="_blank" rel="noopener">📍 '+(p.place?esc(p.place):esc(p.lat.toFixed(4)+", "+p.lon.toFixed(4)))+'</a>':"");
     viewer.classList.add("open");var vzi=viewer.querySelector("img");if(vzi)enableZoom(vzi);
   }
-  function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";}
+  function closeViewer(){viewer.classList.remove("open");viewer.innerHTML="";viewer.removeAttribute("data-pid");}
+  function navPhoto(dir){var list=lastPhotoList||[],cur=viewer.getAttribute("data-pid"),idx=-1;for(var i=0;i<list.length;i++)if(list[i].id===cur){idx=i;break;}if(idx<0)return;var ni=idx+dir;if(ni<0||ni>=list.length)return;openPhoto(list[ni].id);}
   function enableZoom(img){
     var scale=1,tx=0,ty=0,sx=0,sy=0,panning=false,pd=0,ps=1;
     function dist(t){var dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
@@ -910,7 +975,7 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   function acquireWake(){try{if(navigator.wakeLock&&navigator.wakeLock.request){navigator.wakeLock.request("screen").then(function(w){wakeLock=w;}).catch(function(){});}}catch(e){}}
   function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
   function onUpload(){
-    var files=Array.prototype.slice.call(fileInput.files).filter(function(f){return f.type&&f.type.indexOf("image/")===0;});
+    var files=Array.prototype.slice.call(fileInput.files).filter(function(f){return f.type&&(f.type.indexOf("image/")===0||f.type.indexOf("video/")===0);});
     fileInput.value="";
     if(!files.length)return;
     var alb=state.uploadAlbumId||null,total=files.length,done=0,skipped=0;
@@ -923,10 +988,13 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
         var fp=hasFp?(f.size+"-"+(f.lastModified||0)):undefined;
         if(hasFp&&seen[fp]){skipped++;done++;showProgress(done,total);return;}
         if(hasFp)seen[fp]=1;
+        if(f.type.indexOf("video/")===0){
+          var vext=((f.name||"").split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"")||"mp4";
+          return Store.uploadPhoto(f,alb,f.type,vext,f.lastModified||Date.now(),null,null,"",fp).then(function(){done++;showProgress(done,total);});
+        }
         return readExifData(f).then(function(meta){var taken=meta.date||f.lastModified||Date.now();
-          return (meta.lat!=null?reverseGeocodeSafe(meta.lat,meta.lon):Promise.resolve("")).then(function(place){
-            return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,place,fp);});
-          });
+          return processPhoto(f).then(function(r){return Store.uploadPhoto(r.blob,alb,r.contentType,r.ext,taken,meta.lat,meta.lon,"",fp);})
+            .then(function(newId){if(newId&&meta.lat!=null)queueGeocode(newId,meta.lat,meta.lon);});
         }).then(function(){done++;showProgress(done,total);});
       });});
       return chain;
@@ -935,6 +1003,12 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
       if(added>0)playSound();showToast(added>0?("Added "+added+(skipped?" · "+skipped+" already there":"")+" 💕"):(skipped+" already uploaded ✓"));
     }).catch(function(){showToast("Some photos didn’t upload — reopen the app to finish the rest");})
     .then(function(){uploading=false;hideProgress();releaseWake();});
+  }
+  /* Place names are looked up gently in the background (max ~1/sec) so uploads stay fast. */
+  var geoQueue=[],geoRunning=false;
+  function queueGeocode(id,lat,lon){geoQueue.push({id:id,lat:lat,lon:lon});if(!geoRunning)runGeoQueue();}
+  function runGeoQueue(){if(!geoQueue.length){geoRunning=false;return;}geoRunning=true;var j=geoQueue.shift();
+    reverseGeocodeSafe(j.lat,j.lon).then(function(place){if(place)return Store.setPlace(j.id,place);}).catch(function(){}).then(function(){setTimeout(runGeoQueue,1200);});
   }
   function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{showToast("Use your browser menu → Add to Home Screen");}}
 
@@ -1004,6 +1078,8 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
     if(t.dataset.notesub){state.noteSub=t.dataset.notesub;renderNotes();return;}
     var a=t.dataset.action,id=t.dataset.id;
     if(a==="open-photo")openPhoto(id);
+    else if(a==="open-video")openVideo(id);
+    else if(a==="nav-photo")navPhoto(parseInt(t.dataset.dir,10)||0);
     else if(a==="pick-photo")togglePick(id);
     else if(a==="sel-on"){state.selectMode=true;state.selected={};renderAllPhotos();}
     else if(a==="sel-off"){exitSelect();renderAllPhotos();}
@@ -1064,8 +1140,10 @@ code{background:#fbe9f0;border-radius:6px;padding:1px 5px;font-size:12px;}
   window.addEventListener("appinstalled",function(){deferredPrompt=null;showToast("Installed 🎉");});
   var pickAt=0;
   document.addEventListener("click",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.type==="file")pickAt=Date.now();ensureAudio();},true);
-  document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(uploading)acquireWake();if(session){if(uploading)return;if(Date.now()-pickAt<120000)render();else go("home");}});
-  window.addEventListener("focus",function(){if(session)render();});
+  function busyUI(){if(viewer&&viewer.classList.contains("open"))return true;if(document.querySelector(".modal-overlay,.cam-overlay"))return true;var ae=document.activeElement;if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.tagName==="SELECT"||ae.isContentEditable))return true;return false;}
+  document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(uploading)acquireWake();if(session){if(uploading||busyUI())return;if(Date.now()-pickAt<120000)render();else go("home");}});
+  window.addEventListener("focus",function(){if(session&&!uploading&&!busyUI())render();});
+  document.addEventListener("keydown",function(e){if(!viewer.classList.contains("open"))return;if(e.key==="ArrowLeft")navPhoto(-1);else if(e.key==="ArrowRight")navPhoto(1);else if(e.key==="Escape")closeViewer();});
 
   /* ---------- boot ---------- */
   function boot(){
